@@ -7,23 +7,27 @@
 -include("global.hrl").
 
 get(Url) ->
-    case proto_http:request(<<"GET">>, Url, #{}, <<"">>) of
+    case proto_http_comsat:request(<<"GET">>, Url, #{}, <<"">>) of
         {http, Ip, Bin} ->
             {ok, Socket} = gen_tcp:connect(Ip, 80, [binary], ?TIMEOUT),
             ok = gen_tcp:send(Socket, Bin),
-            {ok, StatusCode, Headers, Body} = proto_http:response(Socket),
+            {ok, StatusCode, Headers, Body} = proto_http_comsat:response(Socket),
             case StatusCode of
                 302 -> get(maps:get('Location', Headers));
-                _ -> {ok, StatusCode, Headers, Body}
+                _ -> 
+                    {ok, StatusCode, Headers, Body},
+                    Body
             end;
 
         {https, Ip, Bin} -> 
             {ok, Socket} = ssl:connect(Ip, 443, [binary], ?TIMEOUT),
             ok = ssl:send(Socket, Bin),
-            {ok, StatusCode, Headers, Body} = proto_http:response(Socket),
+            {ok, StatusCode, Headers, Body} = proto_http_comsat:response(Socket),
             case StatusCode of
                 302 -> get(maps:get('Location', Headers));
-                _ -> {ok, StatusCode, Headers, Body}
+                _ -> 
+                    {ok, StatusCode, Headers, Body},
+                    Body
             end
     end
     .
