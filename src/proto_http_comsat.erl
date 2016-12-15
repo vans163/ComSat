@@ -45,8 +45,8 @@ recv_body(Socket, HttpHeaders) when is_map(HttpHeaders) ->
                     recv_body(Socket, ContLen)
             end;
 
-        _ -> 
-            throw(transfer_encoding_not_supported)
+        <<"chunked">> -> 
+            recv_body_chunked(Socket)
     end;
 recv_body(Socket, undefined) -> <<>>;
 recv_body(Socket, ContLen) when is_binary(ContLen) -> 
@@ -66,6 +66,24 @@ recv_body_full(Socket, Acc) ->
         {error, closed} -> Acc
     end
     .
+
+recv_body_chunked(Socket) -> recv_body_chunked(Socket, <<>>).
+recv_body_chunked(Socket, Acc) ->
+    ok = transport_setopts(Socket, [{active, false}, {packet, line}, binary]),
+    case transport_recv(Socket, 0, ?TIMEOUT) of
+        %TODO: Check for 'Trailer:' header
+        {ok, <<"0\r\n">>} ->
+            _ = transport_recv(Socket, 2, ?TIMEOUT),
+            Acc;
+
+        {ok, ChunkSize} -> 
+            ChunkSizeReal = binary:part(ChunkSize, 0, byte_size(ChunkSize)-2),
+            ChunkSizeInt = httpd_util:hexlist_to_integer(binary_to_list(ChunkSizeReal)),
+            ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
+            {ok, Chunk} = transport_recv(Socket, ChunkSizeInt, ?TIMEOUT),
+            _ = transport_recv(Socket, 2, ?TIMEOUT),
+            recv_body_chunked(Socket, <<Acc/binary, Chunk/binary>>)
+    end.
 
 
 request(Type, Url, Headers, Body) when is_binary(Url) -> 
