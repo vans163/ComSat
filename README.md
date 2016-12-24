@@ -43,6 +43,9 @@ comsat_http:post("https://www.google.com:9994/find_it?key=aaaa",
 ```
 
 ### WS/WSS Usage
+NOTE: The client NEVER masks the frame  
+NOTE2: permessage-deflate is currently not supported  
+
 ```erlang
 %comsat_http:ws_connect/1
 Socket = comsat_http:ws_connect("wss://google.com/app:5000").
@@ -51,6 +54,25 @@ Socket = comsat_http:ws_connect("wss://google.com/app:5000").
 Socket = comsat_http:ws_connect("wss://google.com/app:5000", 
     #{"Sec-WebSocket-Protocol"=> "binary"}, 
     #{timeout=> 60000}).
+
+
+%Recv
+{ok, Chunk} = gen_tcp:recv(Socket, 0, 30000),
+{[Frames], RestBinary} = comsat_core_http_ws:deserialize(Chunk),
+%Frame = {text, Binary}
+%Frame = {binary, Binary}
+%Frame = {ping, <<>>}
+%Frame = {pong, <<>>}
+%Frame = {close, <<>>}
+
+%Send
+SerializedText = comsat_core_http_ws:serialize({text, <<"hello mike">>}),
+SerializedBinary = comsat_core_http_ws:serialize({binary, <<"hello mike">>}),
+gen_tcp:send(Socket, SerializedText),
+
+comsat_core_http_ws:serialize(ping),
+comsat_core_http_ws:serialize(pong),
+comsat_core_http_ws:serialize(close)
 
 ```
 

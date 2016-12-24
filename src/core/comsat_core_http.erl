@@ -70,6 +70,9 @@ recv_body(Socket, Timeout, #{'Transfer-Encoding':= <<"chunked">>}) ->
     recv_body_chunked(Socket, Timeout);
 recv_body(Socket, Timeout, #{'Content-Length':= ContLen}) ->
     recv_body_content_length(Socket, Timeout, ContLen);
+recv_body(Socket, Timeout, #{'Upgrade':= <<"websocket">>}) ->
+    ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
+    <<>>;
 recv_body(Socket, Timeout, _) ->
     recv_body_full(Socket, Timeout).
 
@@ -101,7 +104,7 @@ recv_body_full(Socket, Timeout, Acc) ->
     ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
     case transport_recv(Socket, 0, Timeout) of
         {ok, Body} ->
-            recv_body_full(Socket, <<Acc/binary, Body/binary>>);
+            recv_body_full(Socket, Timeout, <<Acc/binary, Body/binary>>);
         {error, closed} -> Acc
     end.
 

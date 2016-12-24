@@ -41,10 +41,10 @@ decode_frame(Chunk) -> {incomplete, Chunk}.
 
 
 
-serialize({text, Text}) when is_list(Text) -> serialize({text, unicode:characters_to_list(Text)});
+serialize({text, Text}) when is_list(Text) -> serialize({text, unicode:characters_to_binary(Text)});
 serialize({text, Bin}) -> encode_frame(Bin, 0, 1);
 
-serialize({binary, Text}) when is_list(Text) -> serialize({binary, unicode:characters_to_list(Text)});
+serialize({binary, Text}) when is_list(Text) -> serialize({binary, unicode:characters_to_binary(Text)});
 serialize({binary, Bin}) -> encode_frame(Bin, 0, 2);
 
 serialize(pong) -> <<1:1, 0:1, 0:1, 0:1, 10:4, 0:1, 0:7>>;
