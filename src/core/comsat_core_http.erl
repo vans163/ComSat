@@ -108,3 +108,6 @@ recv_body_full(Socket, Timeout, Acc) ->
         {error, closed} -> Acc
     end.
 
+
+%dbg:tracer().  dbg:p(all, [call]). dbg:tpl(gen_tcp, recv, x).
+

@@ -22,6 +22,7 @@ Placeholder
 %timeout - default 30000
 %follow_redirect - default true
 
+
 %comsat_http:get/1
 {ok, StatusCode, Headers, Body}
     = comsat_http:get("https://www.google.com:9994/find_it?key=aaaa")
@@ -31,6 +32,7 @@ comsat_http:get("https://www.google.com:9994/find_it?key=aaaa",
     #{"Cookie"=> "secret=token"}, 
     #{timeout=> 60000, follow_redirect=> false})
   
+
 %comsat_http:post/2
 {ok, StatusCode, Headers, Body}
     = comsat_http:post("https://www.google.com:9994/find_it?key=aaaa", <<"the_body">>)
@@ -40,6 +42,16 @@ comsat_http:post("https://www.google.com:9994/find_it?key=aaaa",
     #{"Cookie"=> "secret=token"},
     <<"the_body">>,
     #{timeout=> 60000, follow_redirect=> false})
+
+
+%comsat_http:request/5
+comsat_http:request(
+    <<"HEAD">>, 
+    "http://erlang.org/", 
+    #{"Cookie"=> "secret"}, 
+    <<"dont_send_me_the_body">>, 
+    #{timeout=> 60000}).
+
 ```
 
 ### WS/WSS Usage
