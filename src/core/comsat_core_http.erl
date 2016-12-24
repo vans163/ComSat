@@ -14,7 +14,7 @@ build_request(Type, Path, Query, Host, Headers, Body) ->
         <<"Host">>=> Host, 
         <<"Connection">>=> <<"close">>
     }, Headers),
-    Headers3 = Headers2, %maps:put(<<"Content-Length">>, integer_to_binary(byte_size(Body)), Headers2),
+    Headers3 = maps:put(<<"Content-Length">>, integer_to_binary(byte_size(Body)), Headers2),
 
     HeaderBin = maps:fold(fun(K,V,Acc) ->
             if
