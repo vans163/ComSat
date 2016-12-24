@@ -17,8 +17,42 @@ Placeholder
 - Socks4/4a  
 - Socks5  
 
-### HTTPS Usage
-Placeholder
+### HTTP/HTTPS Usage
+```erlang
+%timeout - default 30000
+%follow_redirect - default true
+
+%comsat_http:get/1
+{ok, StatusCode, Headers, Body}
+    = comsat_http:get("https://www.google.com:9994/find_it?key=aaaa")
+
+%comsat_http:get/3
+comsat_http:get("https://www.google.com:9994/find_it?key=aaaa", 
+    #{"Cookie"=> "secret=token"}, 
+    #{timeout=> 60000, follow_redirect=> false})
+  
+%comsat_http:post/2
+{ok, StatusCode, Headers, Body}
+    = comsat_http:post("https://www.google.com:9994/find_it?key=aaaa", <<"the_body">>)
+
+%comsat_http:post/4
+comsat_http:post("https://www.google.com:9994/find_it?key=aaaa", 
+    #{"Cookie"=> "secret=token"},
+    <<"the_body">>,
+    #{timeout=> 60000, follow_redirect=> false})
+```
+
+### WS/WSS Usage
+```erlang
+%comsat_http:ws_connect/1
+Socket = comsat_http:ws_connect("wss://google.com/app:5000").
+
+%comsat_http:ws_connect/3
+Socket = comsat_http:ws_connect("wss://google.com/app:5000", 
+    #{"Sec-WebSocket-Protocol"=> "binary"}, 
+    #{timeout=> 60000}).
+
+```
 
 ### Proxy Usage
 Placeholder

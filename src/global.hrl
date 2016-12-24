@@ -7,8 +7,14 @@
 -define(PRINT(Var), io:format("~p:~p - ~p~n", [?MODULE, ?LINE, Var])).
 -endif.
 
+-define(B(List), unicode:characters_to_binary(List)).
+-define(B(AA, BB), iolist_to_binary([AA, BB])).
 
-unix_time() -> {A,B,_} = os:timestamp(), (A * 1000000) + B.
+-define(I(Term), if 
+    is_binary(Term) -> binary_to_integer(Term); 
+    is_list(Term) -> list_to_integer(Term);
+    true -> Term
+end).
 
 transport_setopts(SSLSocket={sslsocket, _, _}, Opts) -> ssl:setopts(SSLSocket, Opts);
 transport_setopts(Socket, Opts) -> inet:setopts(Socket, Opts).
