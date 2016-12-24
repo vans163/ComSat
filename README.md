@@ -79,7 +79,7 @@ Socket = comsat_http:ws_connect("wss://google.com/app:5000",
 
 %Send
 SerializedText = comsat_core_http_ws:serialize({text, <<"hello mike">>}),
-SerializedBinary = comsat_core_http_ws:serialize({binary, <<"hello mike">>}),
+SerializedBinary = comsat_core_http_ws:serialize({binary, mask, <<"hello mike">>}),
 gen_tcp:send(Socket, SerializedText),
 
 comsat_core_http_ws:serialize(ping),
