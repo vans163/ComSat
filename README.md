@@ -55,8 +55,7 @@ comsat_http:request(
 ```
 
 ### WS/WSS Usage
-NOTE: The client NEVER masks the frame  
-NOTE2: permessage-deflate is currently not supported  
+NOTE: permessage-deflate is currently not supported  
 
 ```erlang
 %comsat_http:ws_connect/1
