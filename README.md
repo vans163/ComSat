@@ -58,7 +58,7 @@ Socket = comsat_http:ws_connect("wss://google.com/app:5000",
 
 %Recv
 {ok, Chunk} = gen_tcp:recv(Socket, 0, 30000),
-{[Frames], RestBinary} = comsat_core_http_ws:deserialize(Chunk),
+{[Frames], ChunkRest} = comsat_core_http_ws:deserialize(Chunk),
 %Frame = {text, Binary}
 %Frame = {binary, Binary}
 %Frame = {ping, <<>>}
