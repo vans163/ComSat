@@ -40,8 +40,8 @@ comsat_http:get("https://www.google.com:9994/find_it?key=aaaa",
 {ok, StatusCode, Headers, Body}
     = comsat_http:post("https://www.google.com:9994/find_it?key=aaaa", <<"the_body">>)
 
-%comsat_http:get/3
-comsat_http:get(Url, RequestHeaders, Body).
+%comsat_http:post/3
+comsat_http:post(Url, RequestHeaders, Body).
 
 %comsat_http:post/4
 comsat_http:post("https://www.google.com:9994/find_it?key=aaaa", 
