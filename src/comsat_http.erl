@@ -4,9 +4,11 @@
 -include("global.hrl").
 
 get(Url) -> get(Url, #{}, #{}).
+get(Url, Headers) -> get(Url, Headers, #{}).
 get(Url, Headers, Opts) -> request(<<"GET">>, Url, Headers, <<>>, Opts).
 
 post(Url, Body) -> post(Url, #{}, Body, #{}).
+post(Url, Headers, Body) -> post(Url, Headers, Body, #{}).
 post(Url, Headers, Body, Opts) -> request(<<"POST">>, Url, Headers, Body, Opts).
 
 request(Type, Url, ReqHeaders, ReqBody, Opts) ->
