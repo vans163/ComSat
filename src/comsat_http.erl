@@ -22,7 +22,10 @@ request(Type, Url, ReqHeaders, ReqBody, Opts) ->
         %scheme http or https
         R1 when (R1 =:= <<"http">>) or (R1 =:= <<"https">>) ->
             RequestBin = comsat_core_http:build_request(Type, Path, Query, Host, ReqHeaders, ReqBody),
-            {ok, Socket} = gen_tcp:connect(Ip, Port, [{active, false}, binary], Timeout),
+
+            Transport = if R1 =:= <<"https">> -> ssl; true-> gen_tcp end,
+            {ok, Socket} = Transport:connect(Ip, Port, [{active, false}, binary], Timeout),
+
             ok = transport_send(Socket, RequestBin),
             {ok, StatusCode, Headers, ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
             case Redirect of
@@ -54,7 +57,9 @@ ws_connect(Url, ReqHeaders, Opts) ->
         "Sec-WebSocket-Key"=> Key
     }, ReqHeaders), <<>>),
 
-    {ok, Socket} = gen_tcp:connect(Ip, Port, [{active, false}, binary], Timeout),
+    Transport = if Scheme =:= <<"wss">> -> ssl; true-> gen_tcp end,
+    {ok, Socket} = Transport:connect(Ip, Port, [{active, false}, binary], Timeout),
+    
     ok = transport_send(Socket, RequestBin),
 
     {ok, 101, _ReplyHeaders, _ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
