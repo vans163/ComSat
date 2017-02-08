@@ -90,7 +90,7 @@ recv_body_chunked(Socket, Timeout, Acc) ->
             ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
             {ok, Chunk} = transport_recv(Socket, ChunkSizeInt, Timeout),
             _ = transport_recv(Socket, 2, Timeout),
-            recv_body_chunked(Socket, <<Acc/binary, Chunk/binary>>)
+            recv_body_chunked(Socket, Timeout, <<Acc/binary, Chunk/binary>>)
     end.
 
 recv_body_content_length(Socket, Timeout, ContLen) ->
