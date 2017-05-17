@@ -33,7 +33,7 @@ transport_peername(Socket) -> inet:peername(Socket).
 
 hostname_to_ip(Host) when is_binary(Host) -> hostname_to_ip(unicode:characters_to_list(Host));
 hostname_to_ip(Host) ->
-    case inet_res:gethostbyname(Host) of
+    case inet:gethostbyname(Host) of
         {ok, {hostent, _, _, inet, 4, Addrs}} -> hd(Addrs);
         _ -> throw(dns_lookup_failed)
     end
