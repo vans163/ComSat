@@ -11,7 +11,7 @@ build_request(Type, Path, Query, Host, Headers, Body) ->
 
     Headers2 = maps:merge(#{
         <<"User-Agent">>=> <<"Mozilla/5.0 ComSat">>,
-        <<"Host">>=> Host, 
+        <<"Host">>=> Host,
         <<"Connection">>=> <<"close">>
     }, Headers),
     Headers3 = maps:put(<<"Content-Length">>, integer_to_binary(byte_size(Body)), Headers2),
@@ -69,11 +69,11 @@ recv_body(Socket, Timeout, #{'Transfer-Encoding':= <<"chunked">>}) ->
     recv_body_chunked(Socket, Timeout);
 recv_body(Socket, Timeout, #{'Content-Length':= ContLen}) ->
     recv_body_content_length(Socket, Timeout, ContLen);
-recv_body(Socket, Timeout, #{'Upgrade':= <<"websocket">>}) ->
+recv_body(Socket, _Timeout, #{'Upgrade':= <<"websocket">>}) ->
     ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
     <<>>;
-recv_body(Socket, Timeout, _) ->
-    recv_body_full(Socket, Timeout).
+recv_body(_Socket, _Timeout, _) -> <<>>.
+    %recv_body_full(Socket, Timeout).
 
 recv_body_chunked(Socket, Timeout) -> recv_body_chunked(Socket, Timeout, <<>>).
 recv_body_chunked(Socket, Timeout, Acc) ->

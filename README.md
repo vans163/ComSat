@@ -14,6 +14,7 @@ Placeholder
 - Websockets  
 - Http2  
 - QUIC  
+- HTTP CONNECT Proxy
 - Socks4/4a  
 - Socks5  
 
@@ -93,5 +94,21 @@ comsat_core_http_ws:serialize(close)
 
 ```
 
+### Options
+
+timeout          Integer()  
+follow_redirect  true | false  
+inet_options     []  
+ssl_options      []  
+reuse_socket     socket() | undefined  
+keep_alive       true | false  
+proxy            Map() | undefined  
+
+
 ### Proxy Usage
-Placeholder
+Socks5 = %{type=> socks5, host=> "1.1.1.1", port=> 8080, username=> "theuser", password=> "thepass"}
+Http = %{type=> http, host=> "http://1.1.1.1:8090", username=> "theuser", password=> "thepass"}
+
+comsat_http:get("https://www.google.com:9994/find_it?key=aaaa", 
+    #{}, 
+    #{proxy=> Http, ssl_options=> [{server_name_indication, "google.com"}]})

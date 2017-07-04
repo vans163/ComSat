@@ -36,5 +36,4 @@ hostname_to_ip(Host) ->
     case inet:gethostbyname(Host) of
         {ok, {hostent, _, _, inet, 4, Addrs}} -> lists:nth(rand:uniform(length(Addrs)), Addrs);
         _ -> throw(dns_lookup_failed)
-    end
-    .
+    end.

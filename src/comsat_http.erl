@@ -3,6 +3,11 @@
 -compile({no_auto_import,[get/1]}).
 -include("global.hrl").
 
+%comsat_http:get(<<"http://yahoo.com">>).
+
+%{ok, V5} = comsat_http:get(<<"https://www.yahoo.com">>, #{}, #{keep_alive=> true}).
+%{ok, _} = comsat_http:get(<<"https://www.yahoo.com">>, #{}, #{keep_alive=> true, reuse_socket=> maps:get(socket, V5)}).
+
 get(Url) -> get(Url, #{}, #{}).
 get(Url, Headers) -> get(Url, Headers, #{}).
 get(Url, Headers, Opts) -> request(<<"GET">>, Url, Headers, <<>>, Opts).
@@ -11,30 +16,163 @@ post(Url, Body) -> post(Url, #{}, Body, #{}).
 post(Url, Headers, Body) -> post(Url, Headers, Body, #{}).
 post(Url, Headers, Body, Opts) -> request(<<"POST">>, Url, Headers, Body, Opts).
 
-request(Type, Url, ReqHeaders, ReqBody, Opts) ->
+request(Type, Url, ReqHeaders2, ReqBody, Opts) ->
     Timeout = maps:get(timeout, Opts, 30000),
-    Redirect = maps:get(follow_redirect, Opts, true),
+    %FollowRedirect = maps:get(follow_redirect, Opts, true),
+    INetOptions = maps:get(inet_options, Opts, []),
+    SSLOptions = maps:get(ssl_options, Opts, []),
+    ReuseSocket = maps:get(reuse_socket, Opts, undefined),
+    KeepAlive = maps:get(keep_alive, Opts, false),
+    Proxy = maps:get(proxy, Opts, #{}),
+    ProxyType = maps:get(type, Proxy, undefined),
 
-    {Scheme, _, _, Host, Path, Query, DNSName, Port} = comsat_core_uri:parse(Url),
+    ReqHeaders = case KeepAlive of
+        true -> ensure_headers_connection(ReqHeaders2, <<"keep-alive">>);
+        false -> ensure_headers_connection(ReqHeaders2, <<"close">>)
+    end,
+
+    {Scheme, _, _, Host, _Path, _Query, DNSName, Port} = comsat_core_uri:parse(Url),
+    %scheme http or https
+    true = (Scheme =:= <<"http">>) or (Scheme =:= <<"https">>),
 
     Ip = hostname_to_ip(DNSName),
-    case Scheme of
-        %scheme http or https
-        R1 when (R1 =:= <<"http">>) or (R1 =:= <<"https">>) ->
-            RequestBin = comsat_core_http:build_request(Type, Path, Query, Host, ReqHeaders, ReqBody),
 
-            Transport = if R1 =:= <<"https">> -> ssl; true-> gen_tcp end,
-            {ok, Socket} = Transport:connect(Ip, Port, [{active, false}, binary], Timeout),
+    case ReuseSocket of
+        undefined ->
+            {ok, SocketFinal, ReqHeaders3} = case ProxyType of
+                undefined -> 
+                    case Scheme of
+                        <<"http">> ->
+                            {ok, Socket} = gen_tcp:connect(Ip, Port, INetOptions++[{active, false}, binary], Timeout),
+                            {ok, Socket, ReqHeaders};
 
-            ok = transport_send(Socket, RequestBin),
-            {ok, StatusCode, Headers, ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
-            case Redirect of
-                true when (StatusCode =:= 301) or (StatusCode =:= 302) ->
-                    get(maps:get('Location', Headers), ReqHeaders, Opts);
+                        <<"https">> ->
+                            {ok, Socket} = ssl:connect(Ip, Port, INetOptions++SSLOptions++[{active, false}, binary], Timeout),
+                            {ok, Socket, ReqHeaders}
+                    end;
 
-                _ -> {ok, StatusCode, Headers, ReplyBody}
+                socks5 ->
+                    {ok, Socks5Socket} = gen_tcp:connect(
+                        unicode:characters_to_list(maps:get(host, Proxy)),
+                        maps:get(port, Proxy),
+                        INetOptions++[{active, false}, binary],
+                        Timeout
+                    ),
+                    ok = comsat_socks5:do_server_handshake(Host, Port, Socks5Socket, Timeout),
+                    case Scheme of
+                        <<"http">> -> {ok, Socks5Socket, ReqHeaders};
+                        <<"https">> -> 
+                            {ok, SSLSocks5Socket} = ssl:connect(Socks5Socket, SSLOptions, Timeout),
+                            {ok, SSLSocks5Socket, ReqHeaders}
+                    end;
+
+                http ->
+                    {PScheme, _, _, _PHost, _PPath, _PQuery, PDNSName, PPort} 
+                        = comsat_core_uri:parse(maps:get(host, Proxy)),
+                    true = (PScheme =:= <<"http">>),
+                    PIp = hostname_to_ip(PDNSName),
+
+                    {ok, ProxySocket} = gen_tcp:connect(
+                        PIp,
+                        PPort,
+                        INetOptions++[{active, false}, binary],
+                        Timeout
+                    ),
+
+                    ProxyReqHeaders2 = case KeepAlive of
+                        true -> maps:merge(ReqHeaders, #{<<"Proxy-Connection">>=> <<"keep-alive">>});
+                        false -> maps:merge(ReqHeaders, #{<<"Proxy-Connection">>=> <<"close">>})
+                    end,
+
+                    ProxyUsername = maps:get(username, Proxy, undefined),
+                    ProxyPassword = maps:get(password, Proxy, undefined),
+                    ProxyReqHeaders = case (ProxyUsername =/= undefined) and (ProxyPassword =/= undefined) of
+                        true -> 
+                            Base64 = base64:encode(<<ProxyUsername/binary,":",ProxyPassword/binary>>),
+                            ProxyAuth = <<"Basic ", Base64/binary>>,
+                            maps:merge(ProxyReqHeaders2, #{<<"Proxy-Authorization">>=> ProxyAuth});
+                        false -> ProxyReqHeaders2
+                    end,
+                    case Scheme of
+                        <<"http">> -> {ok, ProxySocket, ProxyReqHeaders};
+                        <<"https">> ->
+                            HostPort = <<Host/binary,":",(integer_to_binary(Port))/binary>>,
+                            ProxyAuth2 = maps:get(<<"Proxy-Authorization">>, ProxyReqHeaders),
+                            PConn = case KeepAlive of true-> <<"keep-alive">>; false-> <<"close">> end,
+                            ProxyRequestBin = <<
+                                "CONNECT ", HostPort/binary, " HTTP/1.1\r\n",
+                                "Host: ", HostPort/binary, "\r\n",
+                                "Proxy-Authorization: ", ProxyAuth2/binary, "\r\n",
+                                "Proxy-Connection: ", PConn/binary, "\r\n\r\n"
+                            >>,
+                            io:format("~p~n",[ProxyRequestBin]),
+                            ok = gen_tcp:send(ProxySocket, ProxyRequestBin),
+                            {ok, 200, _Headers, _ReplyBody} 
+                                = comsat_core_http:get_response(ProxySocket, Timeout),
+
+                            {ok, SSLSocket} = ssl:connect(ProxySocket, SSLOptions, Timeout),
+                            {ok, SSLSocket, ReqHeaders}
+                            %ok = comsat_proxy_http:do_server_handshake(Host, Port, ProxySocket, Timeout),                    
+                    end
+            end,
+            request_1(SocketFinal, Type, Url, ReqHeaders3, ReqBody, Opts);
+
+        ReuseSocket ->
+            request_1(ReuseSocket, Type, Url, ReqHeaders, ReqBody, Opts)
+    end.
+
+request_1(Socket, Type, Url, ReqHeaders, ReqBody, Opts) ->
+    Timeout = maps:get(timeout, Opts, 30000),
+    FollowRedirect = maps:get(follow_redirect, Opts, true),
+    KeepAlive = maps:get(keep_alive, Opts, false),
+
+    {Scheme, _, _, Host, Path, Query, _DNSName, Port} = comsat_core_uri:parse(Url),
+    RequestBin = case maps:get(<<"Proxy-Authorization">>, ReqHeaders, undefined) of
+        R when (R =/= undefined) and (Scheme =:= <<"http">>) -> 
+            %Little hack
+            ReqHeaders2 = maps:put(<<"Connection">>, <<"close">>, ReqHeaders),
+            comsat_core_http:build_request(Type, 
+                <<Scheme/binary, "://", Host/binary, Path/binary>>, Query, Host, ReqHeaders2, ReqBody);
+        _ -> 
+            comsat_core_http:build_request(Type, Path, Query, Host, ReqHeaders, ReqBody)
+    end,
+
+    ok = transport_send(Socket, RequestBin),
+    {ok, StatusCode, Headers, ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
+    ReplyConnection2 = maps:get('Connection', Headers, <<"close">>),
+    ReplyConnection = unicode:characters_to_binary(
+        string:to_lower(unicode:characters_to_list(ReplyConnection2))),
+
+    case StatusCode of
+        SC when FollowRedirect, ((SC =:= 301) or (SC =:= 302)) ->
+            Location = maps:get('Location', Headers),
+            {HostScheme, _, _, HostLocation, _HostPath, _HostQuery, _HostDNSName, HostPort}
+                = comsat_core_uri:parse(Location),
+            case (Scheme =:= HostScheme) and (Host =:= HostLocation) and (Port =:= HostPort) of
+                true when ReplyConnection =:= <<"keep-alive">> -> 
+                    request(Type, Location, ReqHeaders, ReqBody, Opts);
+                _ ->
+                    ok = transport_close(Socket),
+                    request(Type, Location, ReqHeaders, ReqBody, maps:put(reuse_socket, undefined, Opts))
+            end;
+
+        _ ->
+            case KeepAlive of
+                true when ReplyConnection =:= <<"keep-alive">> -> 
+                    {ok, #{socket=> Socket, status_code=> StatusCode, headers=> Headers, body=> ReplyBody}};
+
+                _ -> 
+                    ok = transport_close(Socket),
+                    {ok, #{status_code=> StatusCode, headers=> Headers, body=> ReplyBody}}
             end
     end.
+
+keep_alive_close(Socket) -> transport_close(Socket).
+
+ensure_headers_connection(Headers, Value) ->
+    Headers2 = maps:remove("Connection", Headers),
+    Headers3 = maps:remove(<<"Connection">>, Headers2),
+    maps:put(<<"Connection">>, Value, Headers3).
 
 ws_connect(Url) -> ws_connect(Url, #{}, #{}).
 ws_connect(Url, ReqHeaders, Opts) ->
