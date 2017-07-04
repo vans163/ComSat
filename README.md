@@ -106,9 +106,15 @@ proxy            Map() | undefined
 
 
 ### Proxy Usage
+```erlang
 Socks5 = %{type=> socks5, host=> "1.1.1.1", port=> 8080, username=> "theuser", password=> "thepass"}
 Http = %{type=> http, host=> "http://1.1.1.1:8090", username=> "theuser", password=> "thepass"}
 
-comsat_http:get("https://www.google.com:9994/find_it?key=aaaa", 
+{ok, Map} = comsat_http:get("https://www.google.com:9994/find_it?key=aaaa", 
     #{}, 
-    #{proxy=> Http, ssl_options=> [{server_name_indication, "google.com"}]})
+    #{keep_alive=> true, proxy=> Http, ssl_options=> [{server_name_indication, "google.com"}]})
+
+{ok, _} = comsat_http:get("https://www.google.com:9994/find_that", 
+    #{}, 
+    #{keep_alive=> true, reuse_socket=> maps:get(socket, Map)})
+```
