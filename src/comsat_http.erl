@@ -174,6 +174,15 @@ ensure_headers_connection(Headers, Value) ->
     Headers3 = maps:remove(<<"Connection">>, Headers2),
     maps:put(<<"Connection">>, Value, Headers3).
 
+to_post_body(PropList) when is_list(PropList) -> to_post_body(maps:from_list(PropList));
+to_post_body(Map) ->
+    Res = maps:fold(fun(K,V,A) ->
+        KBin = unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(K))),
+        VBin = unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(V))),
+        <<A/binary, KBin/binary,"=",VBin/binary,"&">>
+    end, <<>>, Map),
+    erlang:binary_part(Res, 0, byte_size(Res)-1).
+
 ws_connect(Url) -> ws_connect(Url, #{}, #{}).
 ws_connect(Url, ReqHeaders, Opts) ->
     Timeout = maps:get(timeout, Opts, 30000),
