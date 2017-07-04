@@ -43,6 +43,7 @@ get_response(Socket, Timeout) ->
         {ok, {http_error, Body}} -> {http_error, Body};
         {ok, {http_response, _, StatusCode, _}} -> 
             HttpHeaders = recv_headers(Socket, Timeout),
+            %io:format("~p~n", [HttpHeaders]),
             Body = recv_body(Socket, Timeout, HttpHeaders),
             {ok, StatusCode, HttpHeaders, Body};
 
@@ -93,6 +94,7 @@ recv_body_chunked(Socket, Timeout, Acc) ->
             recv_body_chunked(Socket, Timeout, <<Acc/binary, Chunk/binary>>)
     end.
 
+recv_body_content_length(_, _, <<"0">>) -> <<>>;
 recv_body_content_length(Socket, Timeout, ContLen) ->
     ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
     {ok, Body} = transport_recv(Socket, ?I(ContLen), Timeout),

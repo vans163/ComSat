@@ -105,7 +105,7 @@ request(Type, Url, ReqHeaders2, ReqBody, Opts) ->
                                 "Proxy-Authorization: ", ProxyAuth2/binary, "\r\n",
                                 "Proxy-Connection: ", PConn/binary, "\r\n\r\n"
                             >>,
-                            io:format("~p~n",[ProxyRequestBin]),
+                            %io:format("~p~n",[ProxyRequestBin]),
                             ok = gen_tcp:send(ProxySocket, ProxyRequestBin),
                             {ok, 200, _Headers, _ReplyBody} 
                                 = comsat_core_http:get_response(ProxySocket, Timeout),
