@@ -84,8 +84,8 @@ request(Type, Url, ReqHeaders2, ReqBody, Opts) ->
                         false -> maps:merge(ReqHeaders, #{<<"Proxy-Connection">>=> <<"close">>})
                     end,
 
-                    ProxyUsername = maps:get(username, Proxy, undefined),
-                    ProxyPassword = maps:get(password, Proxy, undefined),
+                    ProxyUsername = unicode:characters_to_binary(maps:get(username, Proxy, undefined)),
+                    ProxyPassword = unicode:characters_to_binary(maps:get(password, Proxy, undefined)),
                     ProxyReqHeaders = case (ProxyUsername =/= undefined) and (ProxyPassword =/= undefined) of
                         true -> 
                             Base64 = base64:encode(<<ProxyUsername/binary,":",ProxyPassword/binary>>),
