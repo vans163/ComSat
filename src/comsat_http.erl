@@ -182,12 +182,14 @@ to_query(Map) ->
         KBin = if
             is_atom(K) -> atom_to_binary(K, utf8);
             is_binary(K); is_list(K) ->
-                unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(K)))
+                unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(K)));
+            true -> throw({invalid_key,K})
         end,
         VBin = if 
             is_atom(V) -> atom_to_binary(V, utf8);
             is_binary(V); is_list(V) ->
-                unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(V)))
+                unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(V)));
+            true -> throw({invalid_value,V})
         end,
         <<A/binary, KBin/binary,"=",VBin/binary,"&">>
     end, <<>>, Map),
