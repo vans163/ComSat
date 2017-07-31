@@ -16,8 +16,8 @@ post(Url, Body) -> post(Url, #{}, Body, #{}).
 post(Url, Headers, Body) -> post(Url, Headers, Body, #{}).
 post(Url, Headers, Body, Opts) -> request(<<"POST">>, Url, Headers, Body, Opts).
 
-request(Type, Url, ReqHeaders3, ReqBody, Opts) ->
-    ReqHeaders2 = normalize_map(ReqHeaders3),
+request(Type, Url, AReqHeaders, ReqBody, Opts) ->
+    ReqHeaders2 = normalize_map(AReqHeaders),
 
     Timeout = maps:get(timeout, Opts, 30000),
     %FollowRedirect = maps:get(follow_redirect, Opts, true),
