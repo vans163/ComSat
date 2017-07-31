@@ -1,7 +1,6 @@
 -module(comsat_core_http_ws).
 -compile(export_all).
 
-
 xor_payload(Payload, Mask) -> xor_payload(Payload, Mask, <<>>).
 
 xor_payload(<<>>, _Mask, Acc) -> Acc;
@@ -17,7 +16,6 @@ xor_payload(<<Chunk:16, Rest/binary>>, M= <<Mask:16, _/binary>>, Acc) ->
 xor_payload(<<Chunk:8, Rest/binary>>, M= <<Mask:8, _/binary>>, Acc) ->
     XorChunk = Chunk bxor Mask,
     xor_payload(Rest, M, <<Acc/binary, XorChunk:8>>).
-
 
 int_to_op(10) -> pong;
 int_to_op(9) -> ping;

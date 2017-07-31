@@ -1,8 +1,6 @@
 -module(comsat_core_uri).
 -compile(export_all).
 
-
-
 parse(Url) ->
     {match, _Matches} = re:run(Url, 
         "^(([^:\\/?#]+):)?(\\/\\/([^\/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?", 

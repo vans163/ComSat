@@ -17,32 +17,18 @@ build_request(Type, Path, Query, Host, Headers, Body) ->
     Headers3 = maps:put(<<"Content-Length">>, integer_to_binary(byte_size(Body)), Headers2),
 
     HeaderBin = maps:fold(fun(K,V,Acc) ->
-            if
-                is_list(K), is_binary(V) ->
-                    KB1 = unicode:characters_to_binary(K),
-                    <<Acc/binary, KB1/binary, ": ", V/binary,"\r\n">>;
-                is_binary(K), is_list(V) ->
-                    VB1 = unicode:characters_to_binary(V),
-                    <<Acc/binary, K/binary, ": ", VB1/binary,"\r\n">>;
-
-                is_list(K), is_list(V) ->
-                    <<Acc/binary, (unicode:characters_to_binary(K ++ ": " ++ V ++ "\r\n"))/binary>>;
-                is_binary(K), is_binary(V) ->
-                    <<Acc/binary, K/binary, ": ", V/binary, "\r\n">>
-            end
-        end, <<>>, Headers3
-    ),
+        <<Acc/binary, K/binary, ": ", V/binary,"\r\n">>
+    end, <<>>, Headers3),
 
     <<Head/binary, HeaderBin/binary, "\r\n", Body/binary>>.
-
-
 
 get_response(Socket, Timeout) ->
     ok = transport_setopts(Socket, [{active, false}, {packet, http_bin}]),
     case transport_recv(Socket, 0, Timeout) of
         {ok, {http_error, Body}} -> {http_error, Body};
         {ok, {http_response, _, StatusCode, _}} -> 
-            HttpHeaders = recv_headers(Socket, Timeout),
+            HttpHeaders2 = recv_headers(Socket, Timeout),
+            HttpHeaders = normalize_map(HttpHeaders2),
             %io:format("~p~n", [HttpHeaders]),
             Body = recv_body(Socket, Timeout, HttpHeaders),
             {ok, StatusCode, HttpHeaders, Body};
@@ -54,23 +40,21 @@ recv_headers(Socket, Timeout) ->
     ok = transport_setopts(Socket, [{active, false}, {packet, httph_bin}]),
     recv_headers_1(Socket, Timeout).
 
-recv_headers_1(Socket, Timeout) -> recv_headers_1(Socket, Timeout, #{}, 0).
-recv_headers_1(_, _, _, Size) when Size > ?HTTP_MAX_HEADER_SIZE -> throw(max_header_size_exceeded);
-recv_headers_1(Socket, Timeout, Map, Size) ->
+recv_headers_1(Socket, Timeout) -> recv_headers_1(Socket, Timeout, #{}).
+recv_headers_1(Socket, Timeout, Map) ->
     case transport_recv(Socket, 0, Timeout) of
         {ok, http_error, Resp} -> {httph_error, Resp};
         {ok, {http_header, _, Key, undefined, Value}} -> 
-            KeyBin = case is_atom(Key) of true -> atom_to_binary(Key, latin1); false -> Key end,
-            recv_headers_1(Socket, Timeout, Map#{Key=>Value}, Size + byte_size(KeyBin) + byte_size(Value));
+            recv_headers_1(Socket, Timeout, Map#{Key=> Value});
         {ok, http_eoh} -> Map
     end.
 
 
-recv_body(Socket, Timeout, #{'Transfer-Encoding':= <<"chunked">>}) ->
+recv_body(Socket, Timeout, #{<<"Transfer-Encoding">>:= <<"chunked">>}) ->
     recv_body_chunked(Socket, Timeout);
-recv_body(Socket, Timeout, #{'Content-Length':= ContLen}) ->
+recv_body(Socket, Timeout, #{<<"Content-Length">>:= ContLen}) ->
     recv_body_content_length(Socket, Timeout, ContLen);
-recv_body(Socket, _Timeout, #{'Upgrade':= <<"websocket">>}) ->
+recv_body(Socket, _Timeout, #{<<"Upgrade">>:= <<"websocket">>}) ->
     ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
     <<>>;
 recv_body(_Socket, _Timeout, _) -> <<>>.

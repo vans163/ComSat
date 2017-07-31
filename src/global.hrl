@@ -1,8 +1,5 @@
 -define(TIMEOUT, 30000).
 
--define(HTTP_MAX_HEADER_SIZE, 8000).
-%-define(HTTP_MAX_BODY_SIZE, 64000).
-
 -ifndef(PRINT).
 -define(PRINT(Var), io:format("~p:~p - ~p~n", [?MODULE, ?LINE, Var])).
 -endif.
@@ -37,3 +34,19 @@ hostname_to_ip(Host) ->
         {ok, {hostent, _, _, inet, 4, Addrs}} -> lists:nth(rand:uniform(length(Addrs)), Addrs);
         _ -> throw(dns_lookup_failed)
     end.
+
+normalize_binary(Term) ->
+    if
+        is_binary(Term) -> Term;
+        is_atom(Term) -> atom_to_binary(Term, utf8);
+        is_integer(Term) -> integer_to_binary(Term);
+        is_list(Term) ->
+            unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(Term)))
+    end.
+
+normalize_map(Map) ->
+    maps:fold(fun(K,V,A) ->
+        KBin = normalize_binary(K),
+        VBin = normalize_binary(V),
+        A#{KBin=> VBin}
+    end, #{}, Map).

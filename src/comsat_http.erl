@@ -16,7 +16,9 @@ post(Url, Body) -> post(Url, #{}, Body, #{}).
 post(Url, Headers, Body) -> post(Url, Headers, Body, #{}).
 post(Url, Headers, Body, Opts) -> request(<<"POST">>, Url, Headers, Body, Opts).
 
-request(Type, Url, ReqHeaders2, ReqBody, Opts) ->
+request(Type, Url, ReqHeaders3, ReqBody, Opts) ->
+    ReqHeaders2 = normalize_map(ReqHeaders3),
+
     Timeout = maps:get(timeout, Opts, 30000),
     %FollowRedirect = maps:get(follow_redirect, Opts, true),
     INetOptions = maps:get(inet_options, Opts, []),
@@ -139,13 +141,13 @@ request_1(Socket, Type, Url, ReqHeaders, ReqBody, Opts) ->
 
     ok = transport_send(Socket, RequestBin),
     {ok, StatusCode, Headers, ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
-    ReplyConnection2 = maps:get('Connection', Headers, <<"close">>),
+    ReplyConnection2 = maps:get(<<"Connection">>, Headers, <<"close">>),
     ReplyConnection = unicode:characters_to_binary(
         string:to_lower(unicode:characters_to_list(ReplyConnection2))),
 
     case StatusCode of
         SC when FollowRedirect, ((SC =:= 301) or (SC =:= 302)) ->
-            Location = maps:get('Location', Headers),
+            Location = maps:get(<<"Location">>, Headers),
             {HostScheme, _, _, HostLocation, _HostPath, _HostQuery, _HostDNSName, HostPort}
                 = comsat_core_uri:parse(Location),
             case (Scheme =:= HostScheme) and (Host =:= HostLocation) and (Port =:= HostPort) of
@@ -171,34 +173,23 @@ keep_alive_close(Socket) -> transport_close(Socket).
 
 ensure_headers_connection(Headers, Value) ->
     Headers2 = maps:without([
-            "Connection", <<"Connection">>,
-            'Connection', 'connection'
+            <<"Connection">>, <<"connection">>
         ], Headers),
     maps:put(<<"Connection">>, Value, Headers2).
 
 to_query(PropList) when is_list(PropList) -> to_query(maps:from_list(PropList));
 to_query(Map) ->
     Res = maps:fold(fun(K,V,A) ->
-        KBin = if
-            is_atom(K) -> atom_to_binary(K, utf8);
-            is_integer(K) -> integer_to_binary(K);
-            is_binary(K); is_list(K) ->
-                unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(K)));
-            true -> throw({invalid_key,K})
-        end,
-        VBin = if 
-            is_atom(V) -> atom_to_binary(V, utf8);
-            is_integer(V) -> integer_to_binary(V);
-            is_binary(V); is_list(V) ->
-                unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(V)));
-            true -> throw({invalid_value,V})
-        end,
+        KBin = normalize_binary(K),
+        VBin = normalize_binary(V),
         <<A/binary, KBin/binary,"=",VBin/binary,"&">>
     end, <<>>, Map),
     erlang:binary_part(Res, 0, byte_size(Res)-1).
 
 ws_connect(Url) -> ws_connect(Url, #{}, #{}).
-ws_connect(Url, ReqHeaders, Opts) ->
+ws_connect(Url, ReqHeaders2, Opts) ->
+    ReqHeaders = normalize_map(ReqHeaders2),
+
     Timeout = maps:get(timeout, Opts, 30000),
 
     {Scheme, _, Origin, Host, Path, Query, DNSName, Port} = comsat_core_uri:parse(Url),
