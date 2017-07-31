@@ -170,15 +170,25 @@ request_1(Socket, Type, Url, ReqHeaders, ReqBody, Opts) ->
 keep_alive_close(Socket) -> transport_close(Socket).
 
 ensure_headers_connection(Headers, Value) ->
-    Headers2 = maps:remove("Connection", Headers),
-    Headers3 = maps:remove(<<"Connection">>, Headers2),
-    maps:put(<<"Connection">>, Value, Headers3).
+    Headers2 = maps:without([
+            "Connection", <<"Connection">>,
+            'Connection', 'connection'
+        ], Headers),
+    maps:put(<<"Connection">>, Value, Headers2).
 
-to_post_body(PropList) when is_list(PropList) -> to_post_body(maps:from_list(PropList));
-to_post_body(Map) ->
+to_query(PropList) when is_list(PropList) -> to_query(maps:from_list(PropList));
+to_query(Map) ->
     Res = maps:fold(fun(K,V,A) ->
-        KBin = unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(K))),
-        VBin = unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(V))),
+        KBin = if
+            is_atom(K) -> atom_to_binary(K, utf8);
+            is_binary(K); is_list(K) ->
+                unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(K)))
+        end,
+        VBin = if 
+            is_atom(V) -> atom_to_binary(V, utf8);
+            is_binary(V); is_list(V) ->
+                unicode:characters_to_binary(http_uri:encode(unicode:characters_to_list(V)))
+        end,
         <<A/binary, KBin/binary,"=",VBin/binary,"&">>
     end, <<>>, Map),
     erlang:binary_part(Res, 0, byte_size(Res)-1).
