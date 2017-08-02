@@ -26,7 +26,8 @@ Placeholder
 ```erlang
 %timeout - default 30000
 %follow_redirect - default true
-
+%inet_options - []
+%ssl_options - []
 
 %comsat_http:get/1
 {ok, #{status_code=> 200, headers=> _, body=> _}}
@@ -62,6 +63,16 @@ comsat_http:request(
     #{"Cookie"=> "secret"}, 
     <<"dont_send_me_the_body">>, 
     #{timeout=> 60000}).
+
+%inet_options and ssl_options example
+comsat_http:get("https://www.google.com/", 
+    #{}, 
+    #{
+        inet_options=> [{linger, {false, 0}}],
+        ssl_options=> [{server_name_indication, 'google.com'}]
+        timeout=> 60000
+    }
+)
 
 ```
 
