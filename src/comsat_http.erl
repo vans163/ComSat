@@ -37,12 +37,11 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
     %scheme http or https
     true = (Scheme =:= <<"http">>) or (Scheme =:= <<"https">>),
 
-    Ip = hostname_to_ip(DNSName),
-
     case ReuseSocket of
         undefined ->
             {ok, SocketFinal, ReqHeaders3} = case ProxyType of
-                undefined -> 
+                undefined ->
+                    Ip = hostname_to_ip(DNSName),
                     case Scheme of
                         <<"http">> ->
                             {ok, Socket} = gen_tcp:connect(Ip, Port, INetOptions++[{active, false}, binary], Timeout),
