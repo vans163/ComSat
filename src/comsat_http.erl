@@ -198,15 +198,16 @@ ws_connect(Url, ReqHeaders2, Opts) ->
     Key = base64:encode(crypto:strong_rand_bytes(16)),
     %Secret = base64:encode(crypto:hash(sha, <<Key/binary, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11">>)),
 
-    RequestBin = comsat_core_http:build_request(<<"GET">>, Path, Query, Host, maps:merge(#{
-        "Connection"=> "Upgrade",
-        "Upgrade"=> "websocket",
-        "Origin"=> Origin,
-        "Pragma"=> "no-cache",
-        "Cache-Control"=> "no-cache",
-        "Sec-WebSocket-Version"=> "13",
-        "Sec-WebSocket-Key"=> Key
-    }, ReqHeaders), <<>>),
+    RequestBin = comsat_core_http:build_request(<<"GET">>, Path, Query, Host, 
+        normalize_map(maps:merge(#{
+            "Connection"=> "Upgrade",
+            "Upgrade"=> "websocket",
+            "Origin"=> Origin,
+            "Pragma"=> "no-cache",
+            "Cache-Control"=> "no-cache",
+            "Sec-WebSocket-Version"=> "13",
+            "Sec-WebSocket-Key"=> Key
+        }, ReqHeaders)), <<>>),
 
     Transport = if Scheme =:= <<"wss">> -> ssl; true-> gen_tcp end,
     {ok, Socket} = Transport:connect(Ip, Port, [{active, false}, binary], Timeout),
