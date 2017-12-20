@@ -25,7 +25,7 @@ build_request(Type, Path, Query, Host, Headers, Body) ->
 get_response(Socket, Timeout) ->
     ok = transport_setopts(Socket, [{active, false}, {packet, http_bin}]),
     case transport_recv(Socket, 0, Timeout) of
-        {ok, {http_error, Body}} -> Body;
+        {ok, {http_error, Body}} -> {http_error, Body};
         {ok, {http_response, _, StatusCode, _}} -> 
             HttpHeaders2 = recv_headers(Socket, Timeout),
             HttpHeaders = normalize_map(HttpHeaders2),
