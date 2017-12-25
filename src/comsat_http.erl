@@ -215,4 +215,5 @@ ws_connect(Url, ReqHeaders2, Opts) ->
     ok = transport_send(Socket, RequestBin),
 
     {ok, 101, _ReplyHeaders, _ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
+    ok = transport_setopts(Socket, [{packet, raw}, binary])
     Socket.
