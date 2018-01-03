@@ -57,8 +57,9 @@ recv_body(Socket, Timeout, #{<<"Content-Length">>:= ContLen}) ->
 recv_body(Socket, _Timeout, #{<<"Upgrade">>:= <<"websocket">>}) ->
     ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
     <<>>;
+recv_body(_Socket, _Timeout, #{<<"Connection">>:= <<"close">>}) ->
+    recv_body_full(Socket, Timeout);
 recv_body(_Socket, _Timeout, _) -> <<>>.
-    %recv_body_full(Socket, Timeout).
 
 recv_body_chunked(Socket, Timeout) -> recv_body_chunked(Socket, Timeout, <<>>).
 recv_body_chunked(Socket, Timeout, Acc) ->
