@@ -1,10 +1,19 @@
 -module(comsat_socks5).
 -compile(export_all).
 
-do_server_handshake(TargetAddr, TargetPort, Socket, Timeout) ->
+do_server_handshake(TargetAddr, TargetPort, Socket, Username, Password, Timeout) ->
     inet:setopts(Socket, [binary, {active, false}]),
-    ok = gen_tcp:send(Socket, <<5,1,0>>),
-    {ok, <<5,0>>} = gen_tcp:recv(Socket, 2, Timeout),
+    case Username == undefined of
+        true -> 
+            ok = gen_tcp:send(Socket, <<5,1,0>>),
+            {ok, <<5,0>>} = gen_tcp:recv(Socket, 2, Timeout);
+
+        false -> 
+            ok = gen_tcp:send(Socket, <<5,1,2>>),
+            {ok, <<5,2>>} = gen_tcp:recv(Socket, 2, Timeout),
+            ok = gen_tcp:send(Socket, <<1,(byte_size(Username)):8, Username/binary, (byte_size(Password)):8, Password/binary>>),
+            {ok, <<1,0>>} = gen_tcp:recv(Socket, 2, Timeout)
+    end,
     ok = gen_tcp:send(Socket, <<5,1,0>>),
     TargetAddrType = case inet:parse_address(unicode:characters_to_list(TargetAddr)) of
         {error, einval} -> <<3>>;

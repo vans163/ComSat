@@ -59,7 +59,9 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
                         INetOptions++[{active, false}, binary],
                         Timeout
                     ),
-                    ok = comsat_socks5:do_server_handshake(Host, Port, Socks5Socket, Timeout),
+                    Socks5Username = maps:get(username, Proxy, undefined)
+                    Socks5Password = maps:get(password, Proxy, undefined)
+                    ok = comsat_socks5:do_server_handshake(Host, Port, Socks5Socket, Socks5Username, Socks5Password, Timeout),
                     case Scheme of
                         <<"http">> -> {ok, Socks5Socket, ReqHeaders};
                         <<"https">> -> 
