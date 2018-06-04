@@ -21,8 +21,7 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
 
     Timeout = maps:get(timeout, Opts, 30000),
     %FollowRedirect = maps:get(follow_redirect, Opts, true),
-    INetOptions = maps:get(inet_options, Opts, []),
-    SSLOptions = maps:get(ssl_options, Opts, []),
+    INetOptions = maps:get(inet_options, Opts, []),    
     ReuseSocket = maps:get(reuse_socket, Opts, undefined),
     KeepAlive = maps:get(keep_alive, Opts, false),
     Proxy = maps:get(proxy, Opts, #{}),
@@ -36,6 +35,12 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
     {Scheme, _, _, Host, _Path, _Query, DNSName, Port} = comsat_core_uri:parse(Url),
     %scheme http or https
     true = (Scheme =:= <<"http">>) or (Scheme =:= <<"https">>),
+
+    SSLOptions2 = maps:get(ssl_options, Opts, []),
+    SSLOptions = case lists:keyfind(server_name_indication, 1, SSLOptions2) of
+        false -> SSLOptions2 ++ [{server_name_indication, unicode:characters_to_list(Host)}];
+        _ -> SSLOptions2
+    end,
 
     case ReuseSocket of
         undefined ->
