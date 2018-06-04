@@ -13,7 +13,7 @@ OTP 20+
 Placeholder  
 
 ### Roadmap
-- ~~Https~~  
+- ~~Https~~  (server_name_indication implied since 4592613)
 - ~~Websockets~~  
 - Http2  
 - QUIC  
