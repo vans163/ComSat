@@ -16,6 +16,10 @@ post(Url, Body) -> post(Url, #{}, Body, #{}).
 post(Url, Headers, Body) -> post(Url, Headers, Body, #{}).
 post(Url, Headers, Body, Opts) -> request(<<"POST">>, Url, Headers, Body, Opts).
 
+delete(Url, Body) -> delete(Url, #{}, Body, #{}).
+delete(Url, Headers, Body) -> delete(Url, Headers, Body, #{}).
+delete(Url, Headers, Body, Opts) -> request(<<"DELETE">>, Url, Headers, Body, Opts).
+
 request(Type, Url, AReqHeaders, ReqBody, Opts) ->
     ReqHeaders2 = normalize_map(AReqHeaders),
 
