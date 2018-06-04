@@ -2,37 +2,37 @@
 -compile(export_all).
 
 parse(Url) ->
-    {match, _Matches} = re:run(Url, 
-        "^(([^:\\/?#]+):)?(\\/\\/([^\/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?", 
-        [{capture, all_but_first, binary}]),
-    Matches = lists:append(_Matches, [<<>>, <<>>, <<>>, <<>>, <<>>, <<>>]),
-    Origin = <<(lists:nth(1, Matches))/binary, (lists:nth(3, Matches))/binary>>,
-    Scheme = lists:nth(2, Matches),
-    Host = lists:nth(4, Matches),
+    {ok, {Scheme, Auth, Host, Port, Path, Query}} = http_uri:parse(Url),
+    Scheme2 = erlang:atom_to_binary(Scheme, unicode),
     
-    _Path = lists:nth(5, Matches),
-    Path = case _Path of <<>> -> <<"/">>; P -> P end,
+    Auth2 = unicode:characters_to_binary(Auth),
 
-    Query = lists:nth(6, Matches),
+    Origin = io_lib:format("~p://~s:~p", [Scheme,Host,Port]),
+    Origin2 = unicode:characters_to_binary(Origin),
+
+    Host2 = unicode:characters_to_binary(Host),
+
+    Path2 = unicode:characters_to_binary(Path),
+
+    Query2 = unicode:characters_to_binary(Query),
+
+    %{ok,{https,[],"www.google.com",443,"/test","?te=4"}}
+
+    %{match, _Matches} = re:run(Url, 
+    %    "^(([^:\\/?#]+):)?(\\/\\/([^\/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?", 
+    %    [{capture, all_but_first, binary}]),
+    %Matches = lists:append(_Matches, [<<>>, <<>>, <<>>, <<>>, <<>>, <<>>]),
+    %Origin = <<(lists:nth(1, Matches))/binary, (lists:nth(3, Matches))/binary>>,
+    %Scheme = lists:nth(2, Matches),
+    %Host = lists:nth(4, Matches),
+    
+    %_Path = lists:nth(5, Matches),
+    %Path = case _Path of <<>> -> <<"/">>; P -> P end,
+
+    %Query = lists:nth(6, Matches),
     %Hashbang = lists:nth(9, Matches),
 
     %Authentication not supported
-    nomatch = binary:match(Host, <<"@">>),
+    %nomatch = binary:match(Host, <<"@">>),
 
-    case binary:split(Host, <<":">>) of
-        [DNSName, PortBin] ->
-            PortInt = binary_to_integer(PortBin),
-            {Scheme, <<>>, Origin, Host, Path, Query, DNSName, PortInt};
-
-        [DNSName] when Scheme == <<"http">> ->
-            {Scheme, <<>>, Origin, Host, Path, Query, DNSName, 80};
-
-        [DNSName] when Scheme == <<"https">> ->
-            {Scheme, <<>>, Origin, Host, Path, Query, DNSName, 443};
-
-        [DNSName] when Scheme == <<"ws">> ->
-            {Scheme, <<>>, Origin, Host, Path, Query, DNSName, 80};
-
-        [DNSName] when Scheme == <<"wss">> ->
-            {Scheme, <<>>, Origin, Host, Path, Query, DNSName, 443}
-    end.
+    {Scheme2, Auth2, Origin2, Host2, Path2, Query2, Host2, Port}.
