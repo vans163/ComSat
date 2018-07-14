@@ -17,7 +17,7 @@ Placeholder
 - ~~Websockets~~  
 - Http2  
 - QUIC  
-- Websockets Proxy  
+- ~~Websockets Proxy~~
 - ~~HTTP CONNECT Proxy~~
 - Socks4/4a  
 - ~~Socks5~~  

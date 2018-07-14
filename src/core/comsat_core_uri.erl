@@ -2,7 +2,10 @@
 -compile(export_all).
 
 parse(Url) ->
-    {ok, {Scheme, Auth, Host, Port, Path, Query}} = http_uri:parse(Url),
+    {ok, {Scheme, Auth, Host, Port, Path, Query}} = http_uri:parse(Url, 
+        [
+            {scheme_defaults, [{http,80},{https,443},{ws,80},{wss,443}]}
+        ]),
     Scheme2 = erlang:atom_to_binary(Scheme, unicode),
     
     Auth2 = unicode:characters_to_binary(Auth),

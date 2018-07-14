@@ -31,14 +31,18 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
     Proxy = maps:get(proxy, Opts, #{}),
     ProxyType = maps:get(type, Proxy, undefined),
 
+    {Scheme, _, _, Host, _Path, _Query, DNSName, Port} = comsat_core_uri:parse(Url),
+
     ReqHeaders = case KeepAlive of
+        true when (Scheme == <<"ws">>) or (Scheme == <<"wss">>) -> 
+            ensure_headers_connection(ReqHeaders2, <<"Upgrade">>);
         true -> ensure_headers_connection(ReqHeaders2, <<"keep-alive">>);
         false -> ensure_headers_connection(ReqHeaders2, <<"close">>)
     end,
 
-    {Scheme, _, _, Host, _Path, _Query, DNSName, Port} = comsat_core_uri:parse(Url),
     %scheme http or https
-    true = (Scheme =:= <<"http">>) or (Scheme =:= <<"https">>),
+    true = (Scheme =:= <<"http">>) or (Scheme =:= <<"https">>) 
+        or (Scheme =:= <<"ws">>) or (Scheme =:= <<"wss">>),
 
     SSLOptions2 = maps:get(ssl_options, Opts, []),
     SSLOptions = case lists:keyfind(server_name_indication, 1, SSLOptions2) of
@@ -52,12 +56,12 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
                 undefined ->
                     Ip = hostname_to_ip(DNSName),
                     case Scheme of
-                        <<"http">> ->
+                        Sche when (Sche == <<"http">>) or (Sche == <<"ws">>) ->
                             {ok, Socket} = gen_tcp:connect(Ip, Port, INetOptions++[{active, false}, binary], Timeout),
                             {ok, Socket, ReqHeaders};
 
-                        <<"https">> ->
-                            {ok, Socket} = ssl:connect(Ip, Port, INetOptions++SSLOptions++[{active, false}, binary], Timeout),
+                        Sche when (Sche == <<"https">>) or (Sche == <<"wss">>) ->
+                            {ok, Socket} = ssl:connect(Ip, Port, INetOptions++SSLOptions++[ {active, false}, binary], Timeout),
                             {ok, Socket, ReqHeaders}
                     end;
 
@@ -72,8 +76,8 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
                     Socks5Password = maps:get(password, Proxy, undefined),
                     ok = comsat_socks5:do_server_handshake(Host, Port, Socks5Socket, Socks5Username, Socks5Password, Timeout),
                     case Scheme of
-                        <<"http">> -> {ok, Socks5Socket, ReqHeaders};
-                        <<"https">> -> 
+                        Sche when (Sche == <<"http">>) or (Sche == <<"ws">>) -> {ok, Socks5Socket, ReqHeaders};
+                        Sche when (Sche == <<"https">>) or (Sche == <<"wss">>) -> 
                             {ok, SSLSocks5Socket} = ssl:connect(Socks5Socket, SSLOptions, Timeout),
                             {ok, SSLSocks5Socket, ReqHeaders}
                     end;
@@ -107,7 +111,8 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
                     end,
                     case Scheme of
                         <<"http">> -> {ok, ProxySocket, ProxyReqHeaders};
-                        <<"https">> ->
+
+                        Sche when (Sche == <<"https">>) or (Sche == <<"wss">>) or (Sche == <<"ws">>)->
                             HostPort = <<Host/binary,":",(integer_to_binary(Port))/binary>>,
                             ProxyAuth2 = maps:get(<<"Proxy-Authorization">>, ProxyReqHeaders),
                             PConn = case KeepAlive of true-> <<"keep-alive">>; false-> <<"close">> end,
@@ -121,10 +126,15 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
                             ok = gen_tcp:send(ProxySocket, ProxyRequestBin),
                             {ok, 200, _Headers, _ReplyBody} 
                                 = comsat_core_http:get_response(ProxySocket, Timeout),
-
-                            {ok, SSLSocket} = ssl:connect(ProxySocket, SSLOptions, Timeout),
-                            {ok, SSLSocket, ReqHeaders}
+                            
+                            case Sche of
+                                <<"ws">> ->
+                                    {ok, ProxySocket, ReqHeaders};
+                                _ ->
+                                    {ok, SSLSocket} = ssl:connect(ProxySocket, SSLOptions, Timeout),
+                                    {ok, SSLSocket, ReqHeaders}
                             %ok = comsat_proxy_http:do_server_handshake(Host, Port, ProxySocket, Timeout),                    
+                            end
                     end
             end,
             request_1(SocketFinal, Type, Url, ReqHeaders3, ReqBody, Opts);
@@ -170,7 +180,9 @@ request_1(Socket, Type, Url, ReqHeaders, ReqBody, Opts) ->
 
         _ ->
             case KeepAlive of
-                true when ReplyConnection =:= <<"keep-alive">> -> 
+                true when (ReplyConnection =:= <<"keep-alive">>) 
+                    or (ReplyConnection =:= <<"upgrade">>)
+                    or (ReplyConnection =:= <<"Upgrade">>) -> 
                     {ok, #{socket=> Socket, status_code=> StatusCode, headers=> Headers, body=> ReplyBody}};
 
                 _ -> 
@@ -209,22 +221,18 @@ ws_connect(Url, ReqHeaders2, Opts) ->
     Key = base64:encode(crypto:strong_rand_bytes(16)),
     %Secret = base64:encode(crypto:hash(sha, <<Key/binary, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11">>)),
 
-    RequestBin = comsat_core_http:build_request(<<"GET">>, Path, Query, Host, 
-        normalize_map(maps:merge(#{
-            "Connection"=> "Upgrade",
-            "Upgrade"=> "websocket",
-            "Origin"=> Origin,
-            "Pragma"=> "no-cache",
-            "Cache-Control"=> "no-cache",
-            "Sec-WebSocket-Version"=> "13",
-            "Sec-WebSocket-Key"=> Key
-        }, ReqHeaders)), <<>>),
-
-    Transport = if Scheme =:= <<"wss">> -> ssl; true-> gen_tcp end,
-    {ok, Socket} = Transport:connect(Ip, Port, [{active, false}, binary], Timeout),
+    Headers = normalize_map(maps:merge(#{
+        "Connection"=> "Upgrade",
+        "Upgrade"=> "websocket",
+        "Origin"=> Origin,
+        "Pragma"=> "no-cache",
+        "Cache-Control"=> "no-cache",
+        "Sec-WebSocket-Version"=> "13",
+        "Sec-WebSocket-Key"=> Key
+    }, ReqHeaders)),
     
-    ok = transport_send(Socket, RequestBin),
+    {ok, #{socket:= WsSocket, status_code:= 101}}
+        = get(Url, Headers, #{keep_alive=> true, follow_redirect=> true}),
 
-    {ok, 101, _ReplyHeaders, _ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
-    ok = transport_setopts(Socket, [{packet, raw}, binary]),
-    Socket.
+    ok = transport_setopts(WsSocket, [{packet, raw}, binary]),
+    WsSocket.
