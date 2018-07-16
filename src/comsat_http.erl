@@ -126,7 +126,7 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
                             ok = gen_tcp:send(ProxySocket, ProxyRequestBin),
                             {ok, 200, _Headers, _ReplyBody} 
                                 = comsat_core_http:get_response(ProxySocket, Timeout),
-                            
+
                             case Sche of
                                 <<"ws">> ->
                                     {ok, ProxySocket, ReqHeaders};
@@ -161,7 +161,7 @@ request_1(Socket, Type, Url, ReqHeaders, ReqBody, Opts) ->
 
     ok = transport_send(Socket, RequestBin),
     {ok, StatusCode, Headers, ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
-    ReplyConnection2 = maps:get(<<"Connection">>, Headers, <<"close">>),
+    ReplyConnection2 = maps:get(<<"Connection">>, Headers, <<"keep-alive">>),
     ReplyConnection = unicode:characters_to_binary(
         string:to_lower(unicode:characters_to_list(ReplyConnection2))),
 
