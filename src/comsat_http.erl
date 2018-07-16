@@ -212,8 +212,6 @@ ws_connect(Url) -> ws_connect(Url, #{}, #{}).
 ws_connect(Url, ReqHeaders2, Opts) ->
     ReqHeaders = normalize_map(ReqHeaders2),
 
-    Timeout = maps:get(timeout, Opts, 30000),
-
     {Scheme, _, Origin, Host, Path, Query, DNSName, Port} = comsat_core_uri:parse(Url),
     Ip = hostname_to_ip(DNSName),
     true = ((Scheme == <<"ws">>) or (Scheme == <<"wss">>)),
@@ -231,8 +229,9 @@ ws_connect(Url, ReqHeaders2, Opts) ->
         "Sec-WebSocket-Key"=> Key
     }, ReqHeaders)),
     
+    Opts2 = maps:merge(Opts, #{keep_alive=> true}),
     {ok, #{socket:= WsSocket, status_code:= 101}}
-        = get(Url, Headers, #{keep_alive=> true, follow_redirect=> true}),
+        = get(Url, Headers, Opts2),
 
     ok = transport_setopts(WsSocket, [{packet, raw}, binary]),
     WsSocket.
