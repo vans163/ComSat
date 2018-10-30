@@ -28,7 +28,14 @@ get_response(Socket, Timeout) ->
         {ok, {http_error, Body}} -> {http_error, Body};
         {ok, {http_response, _, StatusCode, _}} -> 
             HttpHeaders2 = recv_headers(Socket, Timeout),
-            HttpHeaders = normalize_map(HttpHeaders2),
+            HttpHeaders = maps:fold(fun(K,V,A) ->
+                K2 = if 
+                    is_atom(K) -> atom_to_binary(K, utf8);
+                    true -> K
+                end,
+                A#{K2=> V}
+            end, #{}, HttpHeaders2),
+
             %io:format("~p~n", [HttpHeaders]),
             Body = recv_body(Socket, Timeout, HttpHeaders),
             {ok, StatusCode, HttpHeaders, Body};
