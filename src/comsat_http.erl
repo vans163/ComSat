@@ -20,6 +20,10 @@ delete(Url, Body) -> delete(Url, #{}, Body, #{}).
 delete(Url, Headers, Body) -> delete(Url, Headers, Body, #{}).
 delete(Url, Headers, Body, Opts) -> request(<<"DELETE">>, Url, Headers, Body, Opts).
 
+put(Url, Body) -> put(Url, #{}, Body, #{}).
+put(Url, Headers, Body) -> put(Url, Headers, Body, #{}).
+put(Url, Headers, Body, Opts) -> put(<<"PUT">>, Url, Headers, Body, Opts).
+
 request(Type, Url, AReqHeaders, ReqBody, Opts) ->
     ReqHeaders2 = normalize_map(AReqHeaders),
 
