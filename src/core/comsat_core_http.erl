@@ -44,8 +44,14 @@ recv_headers_1(Socket, Timeout) -> recv_headers_1(Socket, Timeout, #{}).
 recv_headers_1(Socket, Timeout, Map) ->
     case transport_recv(Socket, 0, Timeout) of
         {ok, http_error, Resp} -> {httph_error, Resp};
-        {ok, {http_header, _, Key, undefined, Value}} -> 
-            recv_headers_1(Socket, Timeout, Map#{Key=> Value});
+        {ok, {http_header, _, Key, undefined, Value}} ->
+            case maps:get(Key, Map, undefined) of
+                undefined -> recv_headers_1(Socket, Timeout, Map#{Key=> Value});
+                OldValue when is_list(OldValue) =:= false ->
+                    recv_headers_1(Socket, Timeout, Map#{Key=> [OldValue, Value]});
+                OldValue when is_list(OldValue) =:= true ->
+                    recv_headers_1(Socket, Timeout, Map#{Key=> OldValue ++ [Value]})
+            end;
         {ok, http_eoh} -> Map
     end.
 
