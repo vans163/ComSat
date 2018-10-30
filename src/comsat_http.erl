@@ -1,6 +1,6 @@
 -module(comsat_http).
 -compile(export_all).
--compile({no_auto_import,[get/1]}).
+-compile({no_auto_import,[get/1, put/2]}).
 -include("global.hrl").
 
 %comsat_http:get(<<"http://yahoo.com">>).
@@ -22,7 +22,7 @@ delete(Url, Headers, Body, Opts) -> request(<<"DELETE">>, Url, Headers, Body, Op
 
 put(Url, Body) -> put(Url, #{}, Body, #{}).
 put(Url, Headers, Body) -> put(Url, Headers, Body, #{}).
-put(Url, Headers, Body, Opts) -> put(<<"PUT">>, Url, Headers, Body, Opts).
+put(Url, Headers, Body, Opts) -> request(<<"PUT">>, Url, Headers, Body, Opts).
 
 request(Type, Url, AReqHeaders, ReqBody, Opts) ->
     ReqHeaders2 = normalize_map(AReqHeaders),
