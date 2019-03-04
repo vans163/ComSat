@@ -100,7 +100,7 @@ recv_body_content_length(Socket, Timeout, ContLen) ->
 
 recv_body_full(Socket, Timeout) -> recv_body_full(Socket, Timeout, <<>>).
 recv_body_full(Socket, Timeout, Acc) ->
-    ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
+    transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
     case transport_recv(Socket, 0, Timeout) of
         {ok, Body} ->
             recv_body_full(Socket, Timeout, <<Acc/binary, Body/binary>>);
