@@ -23,7 +23,7 @@ build_request(Type, Path, Query, Host, Headers, Body) ->
     <<Head/binary, HeaderBin/binary, "\r\n", Body/binary>>.
 
 get_response(Socket, Timeout) ->
-    ok = transport_setopts(Socket, [{active, false}, {packet, http_bin}]),
+    transport_setopts(Socket, [{active, false}, {packet, http_bin}]),
     case transport_recv(Socket, 0, Timeout) of
         {ok, {http_error, Body}} -> {http_error, Body};
         {ok, {http_response, _, StatusCode, _}} -> 
@@ -44,7 +44,7 @@ get_response(Socket, Timeout) ->
     end.
 
 recv_headers(Socket, Timeout) ->
-    ok = transport_setopts(Socket, [{active, false}, {packet, httph_bin}]),
+    transport_setopts(Socket, [{active, false}, {packet, httph_bin}]),
     recv_headers_1(Socket, Timeout).
 
 recv_headers_1(Socket, Timeout) -> recv_headers_1(Socket, Timeout, #{}).
@@ -68,7 +68,7 @@ recv_body(Socket, Timeout, #{<<"Transfer-Encoding">>:= <<"chunked">>}) ->
 recv_body(Socket, Timeout, #{<<"Content-Length">>:= ContLen}) ->
     recv_body_content_length(Socket, Timeout, ContLen);
 recv_body(Socket, _Timeout, #{<<"Upgrade">>:= <<"websocket">>}) ->
-    ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
+    transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
     <<>>;
 recv_body(Socket, Timeout, #{<<"Connection">>:= <<"close">>}) ->
     recv_body_full(Socket, Timeout);
@@ -76,7 +76,7 @@ recv_body(_Socket, _Timeout, _) -> <<>>.
 
 recv_body_chunked(Socket, Timeout) -> recv_body_chunked(Socket, Timeout, <<>>).
 recv_body_chunked(Socket, Timeout, Acc) ->
-    ok = transport_setopts(Socket, [{active, false}, {packet, line}, binary]),
+    transport_setopts(Socket, [{active, false}, {packet, line}, binary]),
     case transport_recv(Socket, 0, Timeout) of
         %TODO: Check for 'Trailer:' header
         {ok, <<"0\r\n">>} ->
@@ -86,7 +86,7 @@ recv_body_chunked(Socket, Timeout, Acc) ->
         {ok, ChunkSize} -> 
             ChunkSizeReal = binary:part(ChunkSize, 0, byte_size(ChunkSize)-2),
             ChunkSizeInt = httpd_util:hexlist_to_integer(binary_to_list(ChunkSizeReal)),
-            ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
+            transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
             {ok, Chunk} = transport_recv(Socket, ChunkSizeInt, Timeout),
             _ = transport_recv(Socket, 2, Timeout),
             recv_body_chunked(Socket, Timeout, <<Acc/binary, Chunk/binary>>)
@@ -94,7 +94,7 @@ recv_body_chunked(Socket, Timeout, Acc) ->
 
 recv_body_content_length(_, _, <<"0">>) -> <<>>;
 recv_body_content_length(Socket, Timeout, ContLen) ->
-    ok = transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
+    transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
     {ok, Body} = transport_recv(Socket, ?I(ContLen), Timeout),
     Body.
 
