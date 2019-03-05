@@ -167,7 +167,7 @@ request_1(Socket, Type, Url, ReqHeaders, ReqBody, Opts) ->
     {ok, StatusCode, Headers, ReplyBody} = comsat_core_http:get_response(Socket, Timeout),
     ReplyConnection2 = maps:get(<<"Connection">>, Headers, <<"keep-alive">>),
     ReplyConnection = unicode:characters_to_binary(
-        string:to_lower(unicode:characters_to_list(ReplyConnection2))),
+        string:lowercase(unicode:characters_to_list(ReplyConnection2))),
 
     case StatusCode of
         SC when FollowRedirect, ((SC =:= 301) or (SC =:= 302)) ->
@@ -216,8 +216,8 @@ ws_connect(Url) -> ws_connect(Url, #{}, #{}).
 ws_connect(Url, ReqHeaders2, Opts) ->
     ReqHeaders = normalize_map(ReqHeaders2),
 
-    {Scheme, _, Origin, Host, Path, Query, DNSName, Port} = comsat_core_uri:parse(Url),
-    Ip = hostname_to_ip(DNSName),
+    {Scheme, _, Origin, _Host, _Path, _Query, _DNSName, _Port} = comsat_core_uri:parse(Url),
+    %_Ip = hostname_to_ip(DNSName),
     true = ((Scheme == <<"ws">>) or (Scheme == <<"wss">>)),
 
     Key = base64:encode(crypto:strong_rand_bytes(16)),

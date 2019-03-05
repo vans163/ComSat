@@ -23,58 +23,47 @@ build_request(Type, Path, Query, Host, Headers, Body) ->
     <<Head/binary, HeaderBin/binary, "\r\n", Body/binary>>.
 
 get_response(Socket, Timeout) ->
-    transport_setopts(Socket, [{active, false}, {packet, http_bin}]),
+    transport_setopts(Socket, [{active, false}, {packet, raw}]),
+    get_response_1(Socket, Timeout, <<>>).
+get_response_1(Socket, Timeout, Buf) ->
     case transport_recv(Socket, 0, Timeout) of
-        {ok, {http_error, Body}} -> {http_error, Body};
-        {ok, {http_response, _, StatusCode, _}} -> 
-            HttpHeaders2 = recv_headers(Socket, Timeout),
-            HttpHeaders = maps:fold(fun(K,V,A) ->
-                K2 = if 
-                    is_atom(K) -> atom_to_binary(K, utf8);
-                    true -> K
-                end,
-                A#{K2=> V}
-            end, #{}, HttpHeaders2),
+        {ok, Bin} ->
+            Buf2 = <<Buf/binary, Bin/binary>>,
+            EndOfHeader = binary:match(Buf2, <<"\r\n\r\n">>),
+            case EndOfHeader of
+                nomatch -> get_response_1(Socket, Timeout, Buf2);
+                {Pos,_} ->
+                    <<HeaderBin:Pos/binary, _:32, Buf3/binary>> = Buf2,
+                    [Req|Headers] = binary:split(HeaderBin, <<"\r\n">>, [global]),
+                    [_,StatusCode,_] = binary:split(Req, <<" ">>, [global]),
+                    StatusCodeI = erlang:binary_to_integer(StatusCode),
 
-            %io:format("~p~n", [HttpHeaders]),
-            Body = recv_body(Socket, Timeout, HttpHeaders),
-            {ok, StatusCode, HttpHeaders, Body};
+                    HttpHeaders = lists:foldl(fun(Line,Acc) ->
+                        [K,V] = binary:split(Line, <<": ">>),
+                        maps:put(K, V, Acc)
+                    end, #{}, Headers),
+
+                    %io:format("~p ~p~n",[StatusCodeI, HttpHeaders]),
+
+                    Body = recv_body(Socket, Timeout, HttpHeaders, Buf3),
+
+                    {ok, StatusCodeI, HttpHeaders, Body}
+            end;
 
         F -> F 
     end.
 
-recv_headers(Socket, Timeout) ->
-    transport_setopts(Socket, [{active, false}, {packet, httph_bin}]),
-    recv_headers_1(Socket, Timeout).
-
-recv_headers_1(Socket, Timeout) -> recv_headers_1(Socket, Timeout, #{}).
-recv_headers_1(Socket, Timeout, Map) ->
-    case transport_recv(Socket, 0, Timeout) of
-        {ok, http_error, Resp} -> {httph_error, Resp};
-        {ok, {http_header, _, Key, undefined, Value}} ->
-            case maps:get(Key, Map, undefined) of
-                undefined -> recv_headers_1(Socket, Timeout, Map#{Key=> Value});
-                OldValue when is_list(OldValue) =:= false ->
-                    recv_headers_1(Socket, Timeout, Map#{Key=> [OldValue, Value]});
-                OldValue when is_list(OldValue) =:= true ->
-                    recv_headers_1(Socket, Timeout, Map#{Key=> OldValue ++ [Value]})
-            end;
-        {ok, http_eoh} -> Map
-    end.
-
-
-recv_body(Socket, Timeout, #{<<"Transfer-Encoding">>:= <<"chunked">>}) ->
-    recv_body_chunked(Socket, Timeout);
-recv_body(Socket, Timeout, #{<<"Content-Length">>:= ContLen}) ->
-    recv_body_content_length(Socket, Timeout, ContLen);
-recv_body(Socket, _Timeout, #{<<"Upgrade">>:= <<"websocket">>}) ->
-    transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
+recv_body(Socket, Timeout, #{<<"Transfer-Encoding">>:= <<"chunked">>}, BodyBuf) ->
+    throw(recv_body_chunked_encoding),
+    recv_body_chunked(Socket, Timeout, BodyBuf);
+recv_body(Socket, Timeout, #{<<"Content-Length">>:= ContLen}, BodyBuf) ->
+    recv_body_content_length(Socket, Timeout, ?I(ContLen), BodyBuf);
+recv_body(_Socket, _Timeout, #{<<"Upgrade">>:= <<"websocket">>}, _) ->
     <<>>;
-recv_body(Socket, Timeout, #{<<"Connection">>:= <<"close">>}) ->
-    recv_body_full(Socket, Timeout);
-recv_body(_Socket, _Timeout, _) -> <<>>.
+recv_body(Socket, Timeout, #{<<"Connection">>:= <<"close">>}, BodyBuf) ->
+    recv_body_full(Socket, Timeout, BodyBuf);
+recv_body(_Socket, _Timeout, _, _) -> throw(recv_body_no_clause).
 
-recv_body_chunked(Socket, Timeout) -> recv_body_chunked(Socket, Timeout, <<>>).
 recv_body_chunked(Socket, Timeout, Acc) ->
     transport_setopts(Socket, [{active, false}, {packet, line}, binary]),
     case transport_recv(Socket, 0, Timeout) of
@@ -92,19 +81,17 @@ recv_body_chunked(Socket, Timeout, Acc) ->
             recv_body_chunked(Socket, Timeout, <<Acc/binary, Chunk/binary>>)
     end.
 
-recv_body_content_length(_, _, <<"0">>) -> <<>>;
-recv_body_content_length(Socket, Timeout, ContLen) ->
-    transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
-    {ok, Body} = transport_recv(Socket, ?I(ContLen), Timeout),
-    Body.
+recv_body_content_length(_, _, <<"0">>, _) -> <<>>;
+recv_body_content_length(_, _, ContLen, BodyBuf) when ContLen - byte_size(BodyBuf) == 0 -> BodyBuf;
+recv_body_content_length(Socket, Timeout, ContLen, BodyBuf) ->
+    {ok, Body} = transport_recv(Socket, ContLen-byte_size(BodyBuf), Timeout),
+    <<BodyBuf/binary, Body/binary>>.
 
-recv_body_full(Socket, Timeout) -> recv_body_full(Socket, Timeout, <<>>).
-recv_body_full(Socket, Timeout, Acc) ->
-    transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
+recv_body_full(Socket, Timeout, BodyBuf) ->
     case transport_recv(Socket, 0, Timeout) of
         {ok, Body} ->
-            recv_body_full(Socket, Timeout, <<Acc/binary, Body/binary>>);
-        {error, closed} -> Acc
+            recv_body_full(Socket, Timeout, <<BodyBuf/binary, Body/binary>>);
+        {error, closed} -> BodyBuf
     end.
 
 
