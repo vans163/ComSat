@@ -54,8 +54,10 @@ get_response_1(Socket, Timeout, Buf) ->
     end.
 
 recv_body(Socket, Timeout, #{<<"Transfer-Encoding">>:= <<"chunked">>}, BodyBuf) ->
-    throw(recv_body_chunked_encoding),
-    recv_body_chunked(Socket, Timeout, BodyBuf);
+    case recv_body_chunked_1(BodyBuf, <<>>) of
+        {_,Acc,done} -> Acc;
+        {Buf,Acc,_} -> recv_body_chunked(Socket, Timeout, Buf, Acc)
+    end;
 recv_body(Socket, Timeout, #{<<"Content-Length">>:= ContLen}, BodyBuf) ->
     recv_body_content_length(Socket, Timeout, ?I(ContLen), BodyBuf);
 recv_body(_Socket, _Timeout, #{<<"Upgrade">>:= <<"websocket">>}, _) ->
@@ -64,21 +66,31 @@ recv_body(Socket, Timeout, #{<<"Connection">>:= <<"close">>}, BodyBuf) ->
     recv_body_full(Socket, Timeout, BodyBuf);
 recv_body(_Socket, _Timeout, _, _) -> throw(recv_body_no_clause).
 
-recv_body_chunked(Socket, Timeout, Acc) ->
-    transport_setopts(Socket, [{active, false}, {packet, line}, binary]),
+recv_body_chunked(Socket, Timeout, Buf, Acc) ->
     case transport_recv(Socket, 0, Timeout) of
+	{error, closed} -> Acc;
         %TODO: Check for 'Trailer:' header
-        {ok, <<"0\r\n">>} ->
-            _ = transport_recv(Socket, 2, Timeout),
-            Acc;
-
-        {ok, ChunkSize} -> 
-            ChunkSizeReal = binary:part(ChunkSize, 0, byte_size(ChunkSize)-2),
-            ChunkSizeInt = httpd_util:hexlist_to_integer(binary_to_list(ChunkSizeReal)),
-            transport_setopts(Socket, [{active, false}, {packet, raw}, binary]),
-            {ok, Chunk} = transport_recv(Socket, ChunkSizeInt, Timeout),
-            _ = transport_recv(Socket, 2, Timeout),
-            recv_body_chunked(Socket, Timeout, <<Acc/binary, Chunk/binary>>)
+        {ok, Bin} ->
+            Buf2 = <<Buf/binary, Bin/binary>>,
+            case recv_body_chunked_1(Buf2, Acc) of
+                {_, Acc2, done} -> Acc2;
+                {Buf3, Acc2, _} -> recv_body_chunked(Socket, Timeout, Buf3, Acc2)
+            end
+    end.
+recv_body_chunked_1(Buf, Acc) ->
+    case binary:match(Buf, <<"\r\n">>) of
+        nomatch -> {Buf, Acc, cont};
+        {0, _} -> {Buf, Acc, done};
+        {Pos, _} ->
+            ChunkSize = binary:part(Buf, 0, Pos),
+            ChunkSizeInt = httpd_util:hexlist_to_integer(
+                binary_to_list(ChunkSize)),
+            case Buf of
+                _ when ChunkSizeInt == 0 -> {Buf, Acc, done};
+                <<_:Pos/binary,_,_,Acc1:ChunkSizeInt/binary,_,_,R/binary>> ->
+                    recv_body_chunked_1(R, <<Acc/binary, Acc1/binary>>);
+                _ -> {Buf, Acc, cont}
+            end
     end.
 
 recv_body_content_length(_, _, <<"0">>, _) -> <<>>;
