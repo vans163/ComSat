@@ -35,7 +35,8 @@ get_response_1(Socket, Timeout, Buf) ->
                 {Pos,_} ->
                     <<HeaderBin:Pos/binary, _:32, Buf3/binary>> = Buf2,
                     [Req|Headers] = binary:split(HeaderBin, <<"\r\n">>, [global]),
-                    [_,StatusCode,_] = binary:split(Req, <<" ">>, [global]),
+		    [_,Req2] = binary:split(Req, <<" ">>, []),
+                    [StatusCode,_] = binary:split(Req2, <<" ">>, []),
                     StatusCodeI = erlang:binary_to_integer(StatusCode),
 
                     HttpHeaders = lists:foldl(fun(Line,Acc) ->
