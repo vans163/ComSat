@@ -41,7 +41,7 @@ get_response_1(Socket, Timeout, Buf) ->
 
                     HttpHeaders = lists:foldl(fun(Line,Acc) ->
                         [K,V] = binary:split(Line, <<": ">>),
-                        maps:put(K, V, Acc)
+                        maps:put(K, string:trim(V), Acc)
                     end, #{}, Headers),
 
                     %io:format("~p ~p~n",[StatusCodeI, HttpHeaders]),
