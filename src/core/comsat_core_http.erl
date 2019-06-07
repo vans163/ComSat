@@ -59,11 +59,26 @@ recv_body(Socket, Timeout, #{<<"Transfer-Encoding">>:= <<"chunked">>}, BodyBuf) 
         {_,Acc,done} -> Acc;
         {Buf,Acc,_} -> recv_body_chunked(Socket, Timeout, Buf, Acc)
     end;
+recv_body(Socket, Timeout, #{<<"transfer-encoding">>:= <<"chunked">>}, BodyBuf) ->
+    case recv_body_chunked_1(BodyBuf, <<>>) of
+        {_,Acc,done} -> Acc;
+        {Buf,Acc,_} -> recv_body_chunked(Socket, Timeout, Buf, Acc)
+    end;
 recv_body(Socket, Timeout, #{<<"Content-Length">>:= ContLen}, BodyBuf) ->
+    recv_body_content_length(Socket, Timeout, ?I(ContLen), BodyBuf);
+recv_body(Socket, Timeout, #{<<"content-length">>:= ContLen}, BodyBuf) ->
     recv_body_content_length(Socket, Timeout, ?I(ContLen), BodyBuf);
 recv_body(_Socket, _Timeout, #{<<"Upgrade">>:= <<"websocket">>}, _) ->
     <<>>;
+recv_body(_Socket, _Timeout, #{<<"upgrade">>:= <<"websocket">>}, _) ->
+    <<>>;
 recv_body(Socket, Timeout, #{<<"Connection">>:= <<"close">>}, BodyBuf) ->
+    recv_body_full(Socket, Timeout, BodyBuf);
+recv_body(Socket, Timeout, #{<<"Connection">>:= <<"Close">>}, BodyBuf) ->
+    recv_body_full(Socket, Timeout, BodyBuf);
+recv_body(Socket, Timeout, #{<<"connection">>:= <<"close">>}, BodyBuf) ->
+    recv_body_full(Socket, Timeout, BodyBuf);
+recv_body(Socket, Timeout, #{<<"connection">>:= <<"Close">>}, BodyBuf) ->
     recv_body_full(Socket, Timeout, BodyBuf);
 recv_body(_Socket, _Timeout, _, _) -> throw(recv_body_no_clause).
 
