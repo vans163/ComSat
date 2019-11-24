@@ -80,6 +80,8 @@ recv_body(Socket, Timeout, #{<<"connection">>:= <<"close">>}, BodyBuf) ->
     recv_body_full(Socket, Timeout, BodyBuf);
 recv_body(Socket, Timeout, #{<<"connection">>:= <<"Close">>}, BodyBuf) ->
     recv_body_full(Socket, Timeout, BodyBuf);
+recv_body(_Socket, _Timeout, _, <<>>) ->
+    <<>>;
 recv_body(_Socket, _Timeout, _, _) -> throw(recv_body_no_clause).
 
 recv_body_chunked(Socket, Timeout, Buf, Acc) ->
