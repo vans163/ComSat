@@ -157,10 +157,22 @@ request_1(Socket, Type, Url, ReqHeaders, ReqBody, Opts) ->
         R when (R =/= undefined) and (Scheme =:= <<"http">>) -> 
             %Little hack
             ReqHeaders2 = maps:put(<<"Connection">>, <<"close">>, ReqHeaders),
-            comsat_core_http:build_request(Type, 
-                <<Scheme/binary, "://", Host/binary, Path/binary>>, Query, Host, ReqHeaders2, ReqBody);
-        _ -> 
-            comsat_core_http:build_request(Type, Path, Query, Host, ReqHeaders, ReqBody)
+            case lists:member(Port, [80, 443]) of
+                true -> 
+                    comsat_core_http:build_request(Type, 
+                        <<Scheme/binary, "://", Host/binary, Path/binary>>, Query, Host, ReqHeaders2, ReqBody);
+                false -> 
+                    comsat_core_http:build_request(Type, 
+                        <<Scheme/binary, "://", Host/binary, ":", (integer_to_binary(Port))/binary, Path/binary>>, 
+                        Query, Host, ReqHeaders2, ReqBody)
+            end;
+
+        _ ->
+            case lists:member(Port, [80, 443]) of
+                true -> comsat_core_http:build_request(Type, Path, Query, Host, ReqHeaders, ReqBody);
+                false -> comsat_core_http:build_request(Type, 
+                    <<Path/binary, ":", (integer_to_binary(Port))/binary>>, Query, Host, ReqHeaders, ReqBody)
+            end
     end,
 
     ok = transport_send(Socket, RequestBin),
