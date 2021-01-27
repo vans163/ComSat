@@ -5,8 +5,7 @@ do_server_handshake(TargetAddr, TargetPort, Socket, Username, Password, Timeout)
     inet:setopts(Socket, [binary, {active, false}]),
     case Username == undefined of
         true ->
-            ok = gen_tcp:send(Socket, <<5,1,0>>),
-            {ok, <<5,0>>} = gen_tcp:recv(Socket, 2, Timeout);
+            ok = gen_tcp:send(Socket, <<5,1,0>>);
 
         false ->
             ok = gen_tcp:send(Socket, <<5,1,2>>)
