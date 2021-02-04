@@ -82,8 +82,15 @@ recv_body(Socket, Timeout, #{<<"connection">>:= <<"Close">>}, BodyBuf) ->
     recv_body_full(Socket, Timeout, BodyBuf);
 recv_body(_Socket, _Timeout, _, <<>>) ->
     <<>>;
-recv_body(_Socket, _Timeout, H, BodyBuf) -> 
-    throw(#{error=> recv_body_no_clause, headers=> H, body=> BodyBuf}).
+recv_body(Socket, Timeout, _, BodyBuf) -> 
+    recv_body_no_length(Socket, Timeout, BodyBuf).
+
+recv_body_no_length(Socket, Timeout, Buf) ->
+    case transport_recv(Socket, 0, Timeout) of
+        {error, closed} -> Buf;
+        {ok, Bin} ->
+            recv_body_no_length(Socket, Timeout, <<Buf/binary, Bin/binary>>)
+end.
 
 recv_body_chunked(Socket, Timeout, Buf, Acc) ->
     case transport_recv(Socket, 0, Timeout) of
