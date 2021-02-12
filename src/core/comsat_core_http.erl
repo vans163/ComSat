@@ -40,8 +40,15 @@ get_response_1(Socket, Timeout, Buf) ->
                     StatusCodeI = erlang:binary_to_integer(StatusCode),
 
                     HttpHeaders = lists:foldl(fun(Line,Acc) ->
-                        [K,V] = binary:split(Line, <<": ">>),
-                        maps:put(K, string:trim(V), Acc)
+                    	[K,V1] = binary:split(Line, <<": ">>),
+			V = string:trim(V1),
+			case maps:get(K, Acc, nil) of
+			  nil -> maps:put(K, V, Acc);
+	                  OldValues when is_list(OldValues) -> 
+	                      maps:put(K, OldValues ++ [V], Acc);
+		          OldValue ->
+			      maps:put(K, [OldValue, V], Acc)
+	                end
                     end, #{}, Headers),
 
                     %io:format("~p ~p~n",[StatusCodeI, HttpHeaders]),
