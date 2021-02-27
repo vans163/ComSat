@@ -171,7 +171,7 @@ request_1(Socket, Type, Url, ReqHeaders, ReqBody, Opts) ->
             case lists:member(Port, [80, 443]) of
                 true -> comsat_core_http:build_request(Type, Path, Query, Host, ReqHeaders, ReqBody);
                 false -> comsat_core_http:build_request(Type, 
-                    <<Path/binary, ":", (integer_to_binary(Port))/binary>>, Query, Host, ReqHeaders, ReqBody)
+                    <<Path/binary>>, Query, Host, ReqHeaders, ReqBody)
             end
     end,
 
