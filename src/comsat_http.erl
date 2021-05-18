@@ -246,8 +246,8 @@ ws_connect(Url, ReqHeaders2, Opts) ->
     }, ReqHeaders)),
     
     Opts2 = maps:merge(Opts, #{keep_alive=> true}),
-    {ok, #{socket:= WsSocket, status_code:= 101}}
+    {ok, #{socket:= WsSocket, status_code:= 101, headers:= HeadersReply, body:= Body}}
         = get(Url, Headers, Opts2),
 
     ok = transport_setopts(WsSocket, [{packet, raw}, binary]),
-    WsSocket.
+    {WsSocket, HeadersReply, Body}.
