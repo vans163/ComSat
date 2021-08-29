@@ -34,7 +34,8 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
     KeepAlive = maps:get(keep_alive, Opts, false),
     Proxy = maps:get(proxy, Opts, #{}),
     ProxyType = maps:get(type, Proxy, undefined),
-
+    AutoSni = maps:get(auto_sni, Opts, false),
+    
     {Scheme, _, _, Host, _Path, _Query, DNSName, Port} = comsat_core_uri:parse(Url),
 
     ReqHeaders = case KeepAlive of
@@ -50,7 +51,7 @@ request(Type, Url, AReqHeaders, ReqBody, Opts) ->
 
     SSLOptions2 = maps:get(ssl_options, Opts, []),
     SSLOptions = case lists:keyfind(server_name_indication, 1, SSLOptions2) of
-        false -> SSLOptions2 ++ [{server_name_indication, unicode:characters_to_list(Host)}];
+        false when AutoSni =:= true -> SSLOptions2 ++ [{server_name_indication, unicode:characters_to_list(Host)}];
         _ -> SSLOptions2
     end,
 
