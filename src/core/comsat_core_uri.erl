@@ -5,10 +5,10 @@ parse(Url) ->
     Uri = uri_string:parse(Url),
     
     Scheme = maps:get(scheme, Uri, nil),
-    UserInfo = maps:get(userinfo, Uri, nil),
-    Host = maps:get(host, Uri, nil),
-    Path = maps:get(path, Uri, nil),
-    Query = maps:get(query, Uri, nil),
+    UserInfo = maps:get(userinfo, Uri, ""),
+    Host = maps:get(host, Uri, ""),
+    Path = maps:get(path, Uri, "/"),
+    Query = maps:get(query, Uri, ""),
 
     Port = case Scheme of
         <<"http">> -> 80;
