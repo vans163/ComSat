@@ -8,7 +8,11 @@ parse(Url) ->
     UserInfo = maps:get(userinfo, Uri, ""),
     Host = maps:get(host, Uri, ""),
     Path = maps:get(path, Uri, "/"),
-    Query = maps:get(query, Uri, ""),
+    Query2 = maps:get(query, Uri, nil),
+    Query = case Query2 of
+        nil -> "";
+        _ -> <<"?", Query2/binary>>
+    end,
 
     Port = case Scheme of
         <<"http">> -> 80;
