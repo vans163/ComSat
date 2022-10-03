@@ -18,7 +18,7 @@ parse(Url) ->
         _ -> 80
     end,
                
-    Origin = io_lib:format("~s://~s:~s", [Scheme,Host,Port]),
+    Origin = io_lib:format("~s://~s:~p", [Scheme,Host,Port]),
     Origin2 = unicode:characters_to_binary(Origin),
 
     {Scheme, UserInfo, Origin2, Host, Path, Query, Host, Port}.
