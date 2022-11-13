@@ -14,14 +14,15 @@ parse(Url) ->
         _ -> <<"?", Query2/binary>>
     end,
 
-    Port = case Scheme of
+    DefaultPort = case Scheme of
         <<"http">> -> 80;
         <<"https">> -> 443;
         <<"ws">> -> 80;
         <<"wss">> -> 443;
         _ -> 80
     end,
-               
+    Port = maps:get(port, Uri, DefaultPort),
+    
     Origin = io_lib:format("~s://~s:~p", [Scheme,Host,Port]),
     Origin2 = unicode:characters_to_binary(Origin),
 
