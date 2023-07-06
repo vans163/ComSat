@@ -116,8 +116,8 @@ recv_body_chunked_1(Buf, Acc) ->
         {0, _} -> {Buf, Acc, done};
         {Pos, _} ->
             ChunkSize = binary:part(Buf, 0, Pos),
-            ChunkSizeInt = httpd_util:hexlist_to_integer(
-                binary_to_list(ChunkSize)),
+            ChunkSizeInt = erlang:list_to_integer(
+                binary_to_list(ChunkSize), 16),
             case Buf of
                 _ when ChunkSizeInt == 0 -> {Buf, Acc, done};
                 <<_:Pos/binary,_,_,Acc1:ChunkSizeInt/binary,_,_,R/binary>> ->
