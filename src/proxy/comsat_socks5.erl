@@ -35,7 +35,7 @@ do_server_handshake(TargetAddr, TargetPort, Socket, Username, Password, Timeout)
         <<1>> ->
             {ok, _} = gen_tcp:recv(Socket, 4, Timeout);
         <<3>> ->
-            {ok, RTarLen} = gen_tcp:recv(Socket, 1, Timeout),
+            {ok, <<RTarLen:8>>} = gen_tcp:recv(Socket, 1, Timeout),
             {ok, _} = gen_tcp:recv(Socket, RTarLen, Timeout)
     end,
     {ok, _} = gen_tcp:recv(Socket, 2, Timeout),
