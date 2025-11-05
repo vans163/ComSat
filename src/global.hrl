@@ -13,19 +13,19 @@
     true -> Term
 end).
 
-transport_setopts(SSLSocket={sslsocket, _, _}, Opts) -> ssl:setopts(SSLSocket, Opts);
+transport_setopts(SSLSocket, Opts) when is_tuple(SSLSocket), element(1, SSLSocket) =:= sslsocket -> ssl:setopts(SSLSocket, Opts);
 transport_setopts(Socket, Opts) -> inet:setopts(Socket, Opts).
 
-transport_send(SSLSocket={sslsocket, _, _}, Payload) -> ssl:send(SSLSocket, Payload);
+transport_send(SSLSocket, Payload) when is_tuple(SSLSocket), element(1, SSLSocket) =:= sslsocket -> ssl:send(SSLSocket, Payload);
 transport_send(Socket, Payload) -> gen_tcp:send(Socket, Payload).
 
-transport_recv(SSLSocket={sslsocket, _, _}, M, T) -> ssl:recv(SSLSocket, M, T);
+transport_recv(SSLSocket, M, T) when is_tuple(SSLSocket), element(1, SSLSocket) =:= sslsocket -> ssl:recv(SSLSocket, M, T);
 transport_recv(Socket, M, T) -> gen_tcp:recv(Socket, M, T).
 
-transport_close(SSLSocket={sslsocket, _, _}) -> ssl:close(SSLSocket);
+transport_close(SSLSocket) when is_tuple(SSLSocket), element(1, SSLSocket) =:= sslsocket -> ssl:close(SSLSocket);
 transport_close(Socket) -> gen_tcp:close(Socket).
 
-transport_peername(SSLSocket={sslsocket, _, _}) -> ssl:peername(SSLSocket);
+transport_peername(SSLSocket) when is_tuple(SSLSocket), element(1, SSLSocket) =:= sslsocket -> ssl:peername(SSLSocket);
 transport_peername(Socket) -> inet:peername(Socket).
 
 hostname_to_ip(Host) when is_binary(Host) -> hostname_to_ip(unicode:characters_to_list(Host));
